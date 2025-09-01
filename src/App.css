@@ -1,0 +1,94 @@
+/* App-specific styles */
+.App {
+  text-align: center;
+}
+
+/* Vegas-style neon effects */
+.vegas-neon {
+  animation: vegas-neon 2s ease-in-out infinite alternate;
+}
+
+@keyframes vegas-neon {
+  from {
+    text-shadow: 
+      0 0 10px #ff0080,
+      0 0 20px #ff0080,
+      0 0 30px #ff0080,
+      0 0 40px #ff0080;
+  }
+  to {
+    text-shadow: 
+      0 0 5px #00bfff,
+      0 0 15px #00bfff,
+      0 0 25px #00bfff,
+      0 0 35px #00bfff;
+  }
+}
+
+/* Room transition effects */
+.room-transition {
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-enter {
+  opacity: 0;
+  transform: scale(0.9) translateY(20px);
+}
+
+.room-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.room-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.room-exit-active {
+  opacity: 0;
+  transform: scale(0.9) translateY(-20px);
+}
+
+/* Interactive elements */
+.interactive-element {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.interactive-element:hover {
+  transform: translateY(-5px);
+  filter: brightness(1.2);
+}
+
+/* Unity WebGL specific */
+.unity-mobile #unity-container {
+  height: 100vh;
+  width: 100vw;
+}
+
+.unity-desktop #unity-container {
+  height: 100vh;
+  width: 100%;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -468px 0;
+  }
+  100% {
+    background-position: 468px 0;
+  }
+}
