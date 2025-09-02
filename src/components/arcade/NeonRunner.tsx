@@ -40,6 +40,8 @@ const NeonRunner: React.FC = () => {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const gameStateRef = useRef<GameState>({
     isPlaying: false,
@@ -81,6 +83,16 @@ const NeonRunner: React.FC = () => {
   const initScene = useCallback(() => {
     if (!mountRef.current) return;
 
+    // Check WebGL support
+    if (!window.WebGLRenderingContext) {
+      throw new Error('WebGL not supported in this browser');
+    }
+
+    // Get container dimensions
+    const container = mountRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000011);
@@ -88,14 +100,14 @@ const NeonRunner: React.FC = () => {
     sceneRef.current = scene;
 
     // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     camera.position.set(0, 15, 30);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -610,33 +622,50 @@ const NeonRunner: React.FC = () => {
 
   // Handle window resize
   const handleResize = useCallback(() => {
-    if (!cameraRef.current || !rendererRef.current) return;
+    if (!cameraRef.current || !rendererRef.current || !mountRef.current) return;
 
-    cameraRef.current.aspect = window.innerWidth / window.innerHeight;
+    const container = mountRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    cameraRef.current.aspect = width / height;
     cameraRef.current.updateProjectionMatrix();
-    rendererRef.current.setSize(window.innerWidth, window.innerHeight);
+    rendererRef.current.setSize(width, height);
   }, []);
 
   // Initialize scene and start game loop
   useEffect(() => {
-    initScene();
-    startGame();
-    
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleResize);
+    try {
+      console.log('NeonRunner: Initializing scene...');
+      setIsLoading(true);
+      setError(null);
+      
+      initScene();
+      startGame();
+      console.log('NeonRunner: Scene initialized successfully');
+      setIsLoading(false);
+      
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('resize', handleResize);
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleResize);
-      
-      if (animationIdRef.current) {
-        cancelAnimationFrame(animationIdRef.current);
-      }
-      
-      if (rendererRef.current && mountRef.current) {
-        mountRef.current.removeChild(rendererRef.current.domElement);
-      }
-    };
+      return () => {
+        console.log('NeonRunner: Cleaning up...');
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('resize', handleResize);
+        
+        if (animationIdRef.current) {
+          cancelAnimationFrame(animationIdRef.current);
+        }
+        
+        if (rendererRef.current && mountRef.current) {
+          mountRef.current.removeChild(rendererRef.current.domElement);
+        }
+      };
+    } catch (error) {
+      console.error('NeonRunner: Error during initialization:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setIsLoading(false);
+    }
   }, [initScene, handleKeyDown, handleResize]);
 
   // Start game loop
@@ -651,6 +680,38 @@ const NeonRunner: React.FC = () => {
       }
     };
   }, [gameLoop]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="w-full h-screen bg-black flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-4xl mb-4">🎮</div>
+          <div className="text-2xl font-bold mb-2">Loading Neon Runner...</div>
+          <div className="text-lg text-gray-400">Initializing 3D scene</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="w-full h-screen bg-black flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-4xl mb-4">❌</div>
+          <div className="text-2xl font-bold mb-2">Error Loading Game</div>
+          <div className="text-lg text-red-400 mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen relative">
