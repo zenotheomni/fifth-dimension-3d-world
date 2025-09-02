@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useSupabase } from '../../contexts/SupabaseContext'
 import { useAuth } from '../../contexts/AuthContext'
 import type { ArcadeScore } from '../../contexts/SupabaseContext'
+import NeonRunner from './NeonRunner'
 
 interface ArcadeGameProps {
   gameName: string
@@ -37,12 +38,14 @@ export const ArcadeGame: React.FC<ArcadeGameProps> = ({
     renderer.setClearColor(0x000011, 1)
     mountRef.current.appendChild(renderer.domElement)
 
-    // Create game based on type
+    // For neon-runner, we'll render the component directly
+    if (gameType === 'neon-runner') {
+      return null // This will be handled by the component render
+    }
+
+    // Create other games based on type
     let game: any
     switch (gameType) {
-      case 'neon-runner':
-        game = createNeonRunner(scene, camera, renderer)
-        break
       case 'space-defense':
         game = createSpaceDefense(scene, camera, renderer)
         break
@@ -53,7 +56,7 @@ export const ArcadeGame: React.FC<ArcadeGameProps> = ({
 
     gameRef.current = game
 
-    // Animation loop
+    // Animation loop for other games
     const animate = () => {
       requestAnimationFrame(animate)
       
@@ -164,6 +167,11 @@ export const ArcadeGame: React.FC<ArcadeGameProps> = ({
     onScoreUpdate?.(score)
   }, [score, onScoreUpdate])
 
+    // For neon-runner, render the component directly
+  if (gameType === 'neon-runner') {
+    return <NeonRunner />
+  }
+
   return (
     <div className={`arcade-game-container ${className}`}>
       <div className="game-header mb-4 text-center">
@@ -213,10 +221,10 @@ export const ArcadeGame: React.FC<ArcadeGameProps> = ({
             <div className="text-yellow-400 text-xl mb-4">🎉 GAME OVER! 🎉</div>
             <div className="text-lg mb-4">
               Final Score: <span className="text-green-400 font-bold">{score.toLocaleString()}</span>
-            </div>
+              </div>
             <button
               onClick={resetGame}
-              className="px-8 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
+              className="px-8 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
             >
               🔄 PLAY AGAIN
             </button>
