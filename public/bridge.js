@@ -55,5 +55,40 @@ window.isUnityBridgeReady = () => {
            typeof window.onPurchaseRequest === 'function';
 };
 
+// Unity instance management
+window.FDBridge = {
+    unityInstance: null,
+    
+    // Register Unity instance for bidirectional communication
+    registerUnityInstance: (instance) => {
+        window.FDBridge.unityInstance = instance;
+        console.log('[bridge] Unity instance registered for bidirectional communication');
+    },
+    
+    // Send message from web to Unity
+    sendMessage: (gameObject, methodName, value) => {
+        if (window.FDBridge.unityInstance) {
+            console.log(`[bridge] Sending to Unity: ${gameObject}.${methodName}(${value})`);
+            window.FDBridge.unityInstance.SendMessage(gameObject, methodName, value);
+        } else {
+            console.warn('[bridge] Unity instance not registered, cannot send message');
+        }
+    },
+    
+    // Test Unity communication
+    testUnityCommunication: () => {
+        if (window.FDBridge.unityInstance) {
+            console.log('[bridge] Testing Unity communication...');
+            window.FDBridge.sendMessage('LobbyManager', 'FocusDoor', 'arcade');
+            setTimeout(() => {
+                window.FDBridge.sendMessage('LobbyManager', 'StartGame', 'neon-runner');
+            }, 1000);
+        } else {
+            console.log('[bridge] Unity instance not available for testing');
+        }
+    }
+};
+
 console.log('[bridge] Unity bridge handlers loaded successfully');
-console.log('[bridge] Bridge ready:', window.isUnityBridgeReady()); 
+console.log('[bridge] Bridge ready:', window.isUnityBridgeReady());
+console.log('[bridge] FDBridge object available for Unity communication'); 

@@ -126,6 +126,11 @@ export function UnityProvider({ children }: UnityProviderProps) {
             setIsUnityLoaded(true)
             console.log('Unity instance loaded successfully')
             
+            // Register Unity instance with bridge for bidirectional communication
+            if ((window as any).FDBridge && (window as any).FDBridge.registerUnityInstance) {
+              (window as any).FDBridge.registerUnityInstance(instance)
+            }
+            
             // Set up message listeners from Unity
             window.addEventListener('UnityMessage', handleUnityMessage)
           }).catch((error: any) => {

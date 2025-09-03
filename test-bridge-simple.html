@@ -19,6 +19,8 @@
     
     <button onclick="testHandlers()">Test Bridge Handlers</button>
     <button onclick="testEvents()">Test Unity Events</button>
+    <button onclick="testUnityCommunication()">Test Unity Communication</button>
+    <button onclick="testDoorButtons()">Test Door Buttons</button>
     
     <!-- Load Unity bridge handlers first -->
     <script src="/bridge.js"></script>
@@ -63,6 +65,33 @@
             } else {
                 addResult('❌ Bridge not ready', 'error');
             }
+        }
+
+        function testUnityCommunication() {
+            addResult('Testing Unity communication...', 'info');
+            
+            if (window.FDBridge && window.FDBridge.testUnityCommunication) {
+                window.FDBridge.testUnityCommunication();
+                addResult('✅ Tested Unity communication', 'success');
+            } else {
+                addResult('❌ FDBridge not available', 'error');
+            }
+        }
+
+        function testDoorButtons() {
+            addResult('Testing door button events...', 'info');
+            
+            // Simulate door clicks that would trigger fd:open events
+            const doors = ['arcade', 'record-store', 'ballroom'];
+            
+            doors.forEach((door, index) => {
+                setTimeout(() => {
+                    window.onDoorEnter(door);
+                    addResult(`🚪 Door clicked: ${door}`, 'success');
+                }, index * 500);
+            });
+            
+            addResult('✅ Door button events tested', 'success');
         }
 
         // Auto-test on load
