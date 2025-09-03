@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useEffect } from 'react'
+import { getUnityBuildConfig, getUnityFileUrl } from '@/config/unity'
 
 interface UnityContextType {
   unityInstance: any | null
@@ -75,24 +76,12 @@ export function UnityProvider({ children }: UnityProviderProps) {
 
     try {
       // Unity WebGL build configuration
-      const buildUrl = '/unity-build'
-      const config = {
-        dataUrl: `${buildUrl}/Build.data`,
-        frameworkUrl: `${buildUrl}/Build.framework.js`,
-        codeUrl: `${buildUrl}/Build.wasm`,
-        streamingAssetsUrl: 'StreamingAssets',
-        companyName: 'FifthDimension',
-        productName: 'Fifth Dimension World',
-        productVersion: '1.0.0',
-        showBanner: false,
-        matchWebGLToCanvasSize: true,
-        devicePixelRatio: window.devicePixelRatio || 1,
-      }
+      const config = getUnityBuildConfig()
 
       // Load Unity WebGL loader
       if (!(window as any).UnityLoader) {
         const script = document.createElement('script')
-        script.src = `${buildUrl}/Build.loader.js`
+        script.src = getUnityFileUrl('loader')
         script.onload = () => {
           initializeUnity(config)
         }

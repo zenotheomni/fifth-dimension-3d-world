@@ -33,19 +33,21 @@ echo "3. Wait for Unity to open the project"
 echo "4. In Unity, go to File > Build Settings"
 echo "5. Select 'WebGL' platform"
 echo "6. Click 'Switch Platform' if needed"
-echo "7. Set build path to: $(pwd)/public/unity-build"
+echo "7. Set build path to: $(pwd)/public/UnityBuild"
 echo "8. Click 'Build'"
 echo ""
 echo "🔧 Alternative: Use Unity command line build"
 echo "If you have Unity command line tools:"
-echo "unity -batchmode -quit -projectPath $(pwd)/UnityProject -buildTarget WebGL -buildPath $(pwd)/public/unity-build"
+echo "unity -batchmode -quit -projectPath $(pwd)/UnityProject -buildTarget WebGL -buildPath $(pwd)/public/UnityBuild"
 echo ""
 
 # Create the target directory
-mkdir -p public/unity-build
+mkdir -p public/UnityBuild
 
 echo "✅ Ready for Unity build!"
-echo "📁 Target directory: public/unity-build"
+echo "📁 Target directory: public/UnityBuild"
+echo "📁 Unity will create: public/UnityBuild/Build/"
+echo "📁 Expected files: FifthDimension.data, FifthDimension.framework.js, etc."
 echo ""
 echo "🎯 After building, run: npm run dev"
 echo "🎯 Then test Unity integration in the browser" 

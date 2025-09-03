@@ -29,7 +29,7 @@ This guide will walk you through building the Unity project to WebGL and testing
    - In Unity, go to `File > Build Settings`
    - Select `WebGL` platform
    - Click `Switch Platform` if needed
-   - Set build path to: `../public/unity-build`
+   - Set build path to: `../public/UnityBuild`
    - Click `Build`
 
 ### Option B: Command Line Build (Advanced)
@@ -37,22 +37,24 @@ This guide will walk you through building the Unity project to WebGL and testing
 If you have Unity command line tools:
 ```bash
 cd /Users/jenks5/Documents/5du
-unity -batchmode -quit -projectPath UnityProject -buildTarget WebGL -buildPath public/unity-build
+unity -batchmode -quit -projectPath UnityProject -buildTarget WebGL -buildPath public/UnityBuild
 ```
 
 ## 🔧 Step 2: Verify Build Output
 
-After building, check that these files exist in `public/unity-build/`:
+After building, check that these files exist in `public/UnityBuild/Build/`:
 
 ```bash
-ls -la public/unity-build/
+ls -la public/UnityBuild/Build/
 ```
 
 **Required Files:**
-- ✅ `Build.data` - Unity data file
-- ✅ `Build.framework.js` - Unity framework
-- ✅ `Build.loader.js` - Unity loader
-- ✅ `Build.wasm` - WebAssembly binary
+- ✅ `FifthDimension.data` - Unity data file
+- ✅ `FifthDimension.framework.js` - Unity framework
+- ✅ `FifthDimension.loader.js` - Unity loader
+- ✅ `FifthDimension.wasm` - WebAssembly binary
+
+**Note:** Unity creates a `Build/` subfolder with your product name as the file prefix.
 
 **Optional Files:**
 - `StreamingAssets/` - Audio/video assets
@@ -205,7 +207,7 @@ npm run test:unity
 # Build React app
 npm run build
 
-# Unity build should already be in public/unity-build/
+# Unity build should already be in public/UnityBuild/
 # Deploy the entire dist/ folder
 ```
 

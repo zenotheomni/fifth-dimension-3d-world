@@ -19,25 +19,41 @@ console.log('🧪 Testing Unity Integration Setup...\n');
 // Test 1: Check Unity build files
 console.log('1. Checking Unity Build Files...');
 
-const unityBuildPath = path.join(__dirname, '..', 'public', 'unity-build');
+const unityBuildPath = path.join(__dirname, '..', 'public', 'UnityBuild');
+const unityBuildSubPath = path.join(unityBuildPath, 'Build');
 const requiredFiles = [
-  'Build.data',
-  'Build.framework.js', 
-  'Build.loader.js',
-  'Build.wasm'
+  'FifthDimension.data',
+  'FifthDimension.framework.js', 
+  'FifthDimension.loader.js',
+  'FifthDimension.wasm'
 ];
 
 if (fs.existsSync(unityBuildPath)) {
   console.log('   📁 Unity build directory exists');
   
-  requiredFiles.forEach(file => {
-    const filePath = path.join(unityBuildPath, file);
-    if (fs.existsSync(filePath)) {
-      console.log(`   ✅ ${file} exists`);
+  if (fs.existsSync(unityBuildSubPath)) {
+    console.log('   📁 Unity Build subfolder exists');
+    
+    requiredFiles.forEach(file => {
+      const filePath = path.join(unityBuildSubPath, file);
+      if (fs.existsSync(filePath)) {
+        console.log(`   ✅ ${file} exists`);
+      } else {
+        console.log(`   ❌ ${file} is missing`);
+      }
+    });
+  } else {
+    console.log('   ❌ Unity Build subfolder does not exist');
+    console.log('   💡 Unity needs to build to create the Build/ subfolder');
+    
+    // Check if there are any files in the main UnityBuild folder
+    const files = fs.readdirSync(unityBuildPath);
+    if (files.length > 0) {
+      console.log('   📋 Files found in UnityBuild/:', files.join(', '));
     } else {
-      console.log(`   ❌ ${file} is missing`);
+      console.log('   📋 UnityBuild folder is empty');
     }
-  });
+  }
 } else {
   console.log('   ❌ Unity build directory does not exist');
   console.log('   💡 Run: npm run unity:build');
@@ -167,7 +183,7 @@ console.log('   This test checked file structure and configuration.');
 console.log('   Unity integration is ready for testing in the browser.');
 console.log('\n📋 Next Steps:');
 console.log('   1. Build Unity project to WebGL');
-console.log('   2. Place build files in public/unity-build/');
+console.log('   2. Place build files in public/UnityBuild/');
 console.log('   3. Start dev server: npm run dev');
 console.log('   4. Test door navigation in browser');
 console.log('   5. Verify Unity-React communication');
