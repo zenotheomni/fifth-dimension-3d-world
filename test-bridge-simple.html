@@ -20,28 +20,10 @@
     <button onclick="testHandlers()">Test Bridge Handlers</button>
     <button onclick="testEvents()">Test Unity Events</button>
     
+    <!-- Load Unity bridge handlers first -->
+    <script src="/bridge.js"></script>
+    
     <script>
-        // Define bridge handler stubs so tests pass
-        window.onDoorEnter = (key) => {
-            console.log("[bridge] door enter", key);
-            addResult(`[bridge] door enter: ${key}`, 'success');
-        }
-        window.onGameStart = (gameName) => {
-            console.log("[bridge] game start", gameName);
-            addResult(`[bridge] game start: ${gameName}`, 'success');
-        }
-        window.onUnityReady = () => {
-            console.log("[bridge] unity ready");
-            addResult(`[bridge] unity ready`, 'success');
-        }
-        window.onSceneLoaded = (scene) => {
-            console.log("[bridge] scene loaded:", scene);
-            addResult(`[bridge] scene loaded: ${scene}`, 'success');
-        }
-        window.onPurchaseRequest = (id) => {
-            console.log("[bridge] purchase:", id);
-            addResult(`[bridge] purchase: ${id}`, 'success');
-        }
 
         function addResult(message, type = 'info') {
             const results = document.getElementById('results');
@@ -70,13 +52,17 @@
             addResult('Testing Unity events...', 'info');
             
             // Test calling all bridge handlers
-            window.onDoorEnter('test-door');
-            window.onGameStart('test-game');
-            window.onUnityReady();
-            window.onSceneLoaded('test-scene');
-            window.onPurchaseRequest('test-product');
-            
-            addResult('✅ Called all bridge handlers', 'success');
+            if (window.isUnityBridgeReady()) {
+                window.onDoorEnter('test-door');
+                window.onGameStart('test-game');
+                window.onUnityReady();
+                window.onSceneLoaded('test-scene');
+                window.onPurchaseRequest('test-product');
+                
+                addResult('✅ Called all bridge handlers', 'success');
+            } else {
+                addResult('❌ Bridge not ready', 'error');
+            }
         }
 
         // Auto-test on load

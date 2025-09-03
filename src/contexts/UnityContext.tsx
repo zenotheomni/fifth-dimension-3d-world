@@ -78,16 +78,31 @@ export function UnityProvider({ children }: UnityProviderProps) {
       // Unity WebGL build configuration
       const config = getUnityBuildConfig()
 
-      // Load Unity WebGL loader
-      if (!(window as any).UnityLoader) {
-        const script = document.createElement('script')
-        script.src = getUnityFileUrl('loader')
-        script.onload = () => {
+      // Load Unity bridge handlers first
+      if (!(window as any).onDoorEnter) {
+        const bridgeScript = document.createElement('script')
+        bridgeScript.src = '/bridge.js'
+        bridgeScript.onload = () => {
+          console.log('Unity bridge handlers loaded, now loading Unity...')
+          loadUnityLoader(config)
+        }
+        document.head.appendChild(bridgeScript)
+      } else {
+        loadUnityLoader(config)
+      }
+
+      function loadUnityLoader(config: any) {
+        // Load Unity WebGL loader
+        if (!(window as any).UnityLoader) {
+          const script = document.createElement('script')
+          script.src = getUnityFileUrl('loader')
+          script.onload = () => {
+            initializeUnity(config)
+          }
+          document.head.appendChild(script)
+        } else {
           initializeUnity(config)
         }
-        document.head.appendChild(script)
-      } else {
-        initializeUnity(config)
       }
 
       function initializeUnity(config: any) {
