@@ -11,6 +11,7 @@ import { CommunityBoard } from './pages/CommunityBoard'
 import { Ballroom } from './pages/Ballroom'
 import { Profile } from './pages/Profile'
 import { ProfileSetup } from './pages/ProfileSetup'
+import { UnityTestPage } from './pages/UnityTestPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Navigation } from './components/Navigation'
 import './App.css'
@@ -28,6 +29,7 @@ function App() {
                 {/* Public routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/unity-test" element={<UnityTestPage />} />
                 
                 {/* Profile setup route */}
                 <Route path="/profile-setup" element={
