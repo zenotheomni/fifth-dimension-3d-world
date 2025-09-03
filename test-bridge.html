@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Bridge Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .test-button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #005a9e;
+        }
+        .result {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { border-left: 4px solid #4caf50; }
+        .error { border-left: 4px solid #f44336; }
+        .info { border-left: 4px solid #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Unity Bridge Handler Test</h1>
+    
+    <div class="test-section">
+        <h2>Bridge Handler Status</h2>
+        <div id="handler-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Bridge Handlers</h2>
+        <button class="test-button" onclick="testDoorEnter()">Test onDoorEnter</button>
+        <button class="test-button" onclick="testGameStart()">Test onGameStart</button>
+        <button class="test-button" onclick="testUnityReady()">Test onUnityReady</button>
+        <button class="test-button" onclick="testSceneLoaded()">Test onSceneLoaded</button>
+        <button class="test-button" onclick="testPurchaseRequest()">Test onPurchaseRequest</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Listeners</h2>
+        <div id="event-listeners"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        // Test results storage
+        const testResults = [];
+        
+        function addResult(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const result = { timestamp, message, type };
+            testResults.push(result);
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('test-results');
+            container.innerHTML = testResults.map(result => 
+                `<div class="result ${result.type}">[${result.timestamp}] ${result.message}</div>`
+            ).join('');
+        }
+
+        // Check if bridge handlers are defined
+        function checkBridgeHandlers() {
+            const handlers = [
+                'onDoorEnter',
+                'onGameStart', 
+                'onUnityReady',
+                'onSceneLoaded',
+                'onPurchaseRequest'
+            ];
+            
+            const status = document.getElementById('handler-status');
+            let html = '';
+            
+            handlers.forEach(handler => {
+                const exists = typeof window[handler] === 'function';
+                const statusClass = exists ? 'success' : 'error';
+                const statusText = exists ? '✅ Defined' : '❌ Missing';
+                
+                html += `<div class="result ${statusClass}">${handler}: ${statusText}</div>`;
+            });
+            
+            status.innerHTML = html;
+            
+            // Log results
+            handlers.forEach(handler => {
+                if (typeof window[handler] === 'function') {
+                    addResult(`${handler} is properly defined`, 'success');
+                } else {
+                    addResult(`${handler} is missing`, 'error');
+                }
+            });
+        }
+
+        // Test bridge handlers
+        function testDoorEnter() {
+            if (typeof window.onDoorEnter === 'function') {
+                window.onDoorEnter('test-door');
+                addResult('Called onDoorEnter("test-door")', 'success');
+            } else {
+                addResult('onDoorEnter handler not found', 'error');
+            }
+        }
+
+        function testGameStart() {
+            if (typeof window.onGameStart === 'function') {
+                window.onGameStart('test-game');
+                addResult('Called onGameStart("test-game")', 'success');
+            } else {
+                addResult('onGameStart handler not found', 'error');
+            }
+        }
+
+        function testUnityReady() {
+            if (typeof window.onUnityReady === 'function') {
+                window.onUnityReady();
+                addResult('Called onUnityReady()', 'success');
+            } else {
+                addResult('onUnityReady handler not found', 'error');
+            }
+        }
+
+        function testSceneLoaded() {
+            if (typeof window.onSceneLoaded === 'function') {
+                window.onSceneLoaded('test-scene');
+                addResult('Called onSceneLoaded("test-scene")', 'success');
+            } else {
+                addResult('onSceneLoaded handler not found', 'error');
+            }
+        }
+
+        function testPurchaseRequest() {
+            if (typeof window.onPurchaseRequest === 'function') {
+                window.onPurchaseRequest('test-product');
+                addResult('Called onPurchaseRequest("test-product")', 'success');
+            } else {
+                addResult('onPurchaseRequest handler not found', 'error');
+            }
+        }
+
+        // Set up event listeners for Unity events
+        function setupEventListeners() {
+            const events = ['fd:open', 'fd:game-start', 'fd:unity-ready', 'fd:scene-loaded', 'fd:purchase'];
+            
+            events.forEach(eventName => {
+                document.addEventListener(eventName, (event) => {
+                    addResult(`Event received: ${eventName} with detail: ${JSON.stringify(event.detail)}`, 'success');
+                });
+            });
+            
+            addResult('Event listeners set up for Unity events', 'info');
+        }
+
+        // Initialize test
+        function init() {
+            addResult('Bridge test initialized', 'info');
+            checkBridgeHandlers();
+            setupEventListeners();
+        }
+
+        // Run initialization when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html> 

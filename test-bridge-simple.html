@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Bridge Simple Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+        .result { background: #333; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { border-left: 4px solid #4caf50; }
+        .error { border-left: 4px solid #f44336; }
+        button { background: #007acc; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Unity Bridge Handler Test</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testHandlers()">Test Bridge Handlers</button>
+    <button onclick="testEvents()">Test Unity Events</button>
+    
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+        }
+
+        function testHandlers() {
+            addResult('Testing Unity bridge handlers...', 'info');
+            
+            // Check if handlers are defined
+            const handlers = ['onDoorEnter', 'onGameStart', 'onUnityReady', 'onSceneLoaded', 'onPurchaseRequest'];
+            
+            handlers.forEach(handler => {
+                if (typeof window[handler] === 'function') {
+                    addResult(`✅ ${handler} is defined`, 'success');
+                } else {
+                    addResult(`❌ ${handler} is missing`, 'error');
+                }
+            });
+        }
+
+        function testEvents() {
+            addResult('Testing Unity events...', 'info');
+            
+            // Test calling handlers if they exist
+            if (typeof window.onDoorEnter === 'function') {
+                window.onDoorEnter('test-door');
+                addResult('✅ Called onDoorEnter("test-door")', 'success');
+            }
+            
+            if (typeof window.onGameStart === 'function') {
+                window.onGameStart('test-game');
+                addResult('✅ Called onGameStart("test-game")', 'success');
+            }
+            
+            if (typeof window.onUnityReady === 'function') {
+                window.onUnityReady();
+                addResult('✅ Called onUnityReady()', 'success');
+            }
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            addResult('Page loaded, checking bridge handlers...', 'info');
+            testHandlers();
+        });
+    </script>
+</body>
+</html> 
