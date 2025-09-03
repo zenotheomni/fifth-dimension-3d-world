@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, ReactNode, useCallback } from 'react'
+import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useEffect } from 'react'
 
 interface UnityContextType {
   unityInstance: any | null
@@ -9,6 +9,8 @@ interface UnityContextType {
   isUnityVisible: boolean
   setUnityVisible: (visible: boolean) => void
   unityContainerRef: React.RefObject<HTMLDivElement>
+  focusDoor: (doorKey: string) => void
+  startGame: (gameName: string) => void
 }
 
 const UnityContext = createContext<UnityContextType | undefined>(undefined)
@@ -22,6 +24,51 @@ export function UnityProvider({ children }: UnityProviderProps) {
   const [isUnityLoaded, setIsUnityLoaded] = useState(false)
   const [isUnityVisible, setUnityVisible] = useState(false)
   const unityContainerRef = useRef<HTMLDivElement>(null)
+
+  // Set up Unity event handlers once on mount
+  useEffect(() => {
+    // Door navigation handler
+    ;(window as any).onDoorEnter = (key: string) => {
+      console.log('🚪 Door entered:', key)
+      document.dispatchEvent(new CustomEvent('fd:open', { detail: key }))
+      
+      // You can also handle navigation here directly
+      // window.location.hash = `#/${key}`
+    }
+
+    // Game start handler
+    ;(window as any).onGameStart = (gameName: string) => {
+      console.log('🎮 Game started:', gameName)
+      document.dispatchEvent(new CustomEvent('fd:game-start', { detail: gameName }))
+    }
+
+    // Purchase request handler
+    ;(window as any).onPurchaseRequest = (productId: string) => {
+      console.log('💰 Purchase request:', productId)
+      document.dispatchEvent(new CustomEvent('fd:purchase', { detail: productId }))
+    }
+
+    // Unity ready handler
+    ;(window as any).onUnityReady = () => {
+      console.log('✅ Unity is ready')
+      document.dispatchEvent(new CustomEvent('fd:unity-ready'))
+    }
+
+    // Scene loaded handler
+    ;(window as any).onSceneLoaded = (sceneName: string) => {
+      console.log('🎬 Scene loaded:', sceneName)
+      document.dispatchEvent(new CustomEvent('fd:scene-loaded', { detail: sceneName }))
+    }
+
+    // Cleanup function
+    return () => {
+      delete (window as any).onDoorEnter
+      delete (window as any).onGameStart
+      delete (window as any).onPurchaseRequest
+      delete (window as any).onUnityReady
+      delete (window as any).onSceneLoaded
+    }
+  }, [])
 
   const loadUnity = useCallback(async () => {
     if (isUnityLoaded || !unityContainerRef.current) return
@@ -113,6 +160,24 @@ export function UnityProvider({ children }: UnityProviderProps) {
     }
   }, [unityInstance, isUnityLoaded])
 
+  const focusDoor = useCallback((doorKey: string) => {
+    if (unityInstance && isUnityLoaded) {
+      console.log(`🎯 Focusing door: ${doorKey}`)
+      unityInstance.SendMessage('LobbyManager', 'FocusDoor', doorKey)
+    } else {
+      console.warn('Unity instance not loaded, cannot focus door')
+    }
+  }, [unityInstance, isUnityLoaded])
+
+  const startGame = useCallback((gameName: string) => {
+    if (unityInstance && isUnityLoaded) {
+      console.log(`🎮 Starting game: ${gameName}`)
+      unityInstance.SendMessage('LobbyManager', 'StartGame', gameName)
+    } else {
+      console.warn('Unity instance not loaded, cannot start game')
+    }
+  }, [unityInstance, isUnityLoaded])
+
   const handleUnityMessage = useCallback((event: any) => {
     // Handle messages from Unity
     const { data } = event.detail || event
@@ -160,6 +225,8 @@ export function UnityProvider({ children }: UnityProviderProps) {
     isUnityVisible,
     setUnityVisible,
     unityContainerRef,
+    focusDoor,
+    startGame,
   }
 
   return (
