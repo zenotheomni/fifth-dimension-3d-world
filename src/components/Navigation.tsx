@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, Music, Gamepad2, Users, Radio, User, LogOut, Menu, X } from 'lucide-react'
+import { Home, Music, Gamepad2, Users, Radio, Theater, User, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export const Navigation: React.FC = () => {
@@ -22,6 +22,7 @@ export const Navigation: React.FC = () => {
     { icon: <Gamepad2 className="w-5 h-5" />, label: 'Arcade', path: '/arcade' },
     { icon: <Users className="w-5 h-5" />, label: 'Community', path: '/community' },
     { icon: <Radio className="w-5 h-5" />, label: 'Ballroom', path: '/ballroom' },
+    { icon: <Theater className="w-5 h-5" />, label: 'Venue 5', path: '/venue5' },
   ]
 
   // Don't show navigation on landing and auth pages

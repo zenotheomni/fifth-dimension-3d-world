@@ -9,6 +9,7 @@ import { RecordStore } from './pages/RecordStore'
 import { Arcade } from './pages/Arcade'
 import { CommunityBoard } from './pages/CommunityBoard'
 import { Ballroom } from './pages/Ballroom'
+import { Venue5 } from './pages/Venue5'
 import { Profile } from './pages/Profile'
 import { ProfileSetup } from './pages/ProfileSetup'
 import { UnityTestPage } from './pages/UnityTestPage'
@@ -68,6 +69,9 @@ function App() {
                     <Ballroom />
                   </ProtectedRoute>
                 } />
+                
+                <Route path="/venue5" element={<Venue5 />} />
+                <Route path="/venue5/:eventId" element={<Venue5 />} />
                 
                 <Route path="/profile" element={
                   <ProtectedRoute>

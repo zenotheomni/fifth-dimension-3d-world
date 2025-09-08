@@ -59,9 +59,9 @@ export const LandingPage: React.FC = () => {
       {/* Interactive 3D Background Scene */}
       <InteractiveSplashScene 
         onSceneLoaded={() => setSceneLoaded(true)}
+        onNavigate={(route) => navigate(route)}
         className="absolute inset-0"
-      />
-      
+      />      
       {/* Content Overlay with improved readability */}
       <div className="relative z-20">
         {/* Gradient overlay for better text readability */}

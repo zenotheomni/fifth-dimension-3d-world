@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Bridge Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #333; border-radius: 8px; }
+        .test-button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .test-button:hover { background: #45a049; }
+        .results { margin-top: 10px; padding: 10px; background: #2a2a2a; border-radius: 4px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Unity Bridge Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Bridge Handlers</h3>
+        <button class="test-button" onclick="testBridgeHandlers()">Test Bridge Handlers</button>
+        <div id="bridge-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Unity Events</h3>
+        <button class="test-button" onclick="testUnityEvents()">Test Unity Events</button>
+        <div id="events-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test Door Buttons</h3>
+        <button class="test-button" onclick="testDoorButtons()">Test Door Buttons</button>
+        <div id="door-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Unity Communication</h3>
+        <button class="test-button" onclick="testUnityCommunication()">Test Unity Communication</button>
+        <div id="unity-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. Bridge Status</h3>
+        <div id="status-results" class="results"></div>
+    </div>
+
+    <!-- Load the bridge handlers first -->
+    <script src="/bridge.js"></script>
+    
+    <script>
+        // Test functions
+        function testBridgeHandlers() {
+            const results = document.getElementById('bridge-results');
+            let allPassed = true;
+            let html = '';
+            
+            const handlers = ['onDoorEnter', 'onGameStart', 'onUnityReady', 'onSceneLoaded', 'onPurchaseRequest'];
+            
+            handlers.forEach(handler => {
+                if (typeof window[handler] === 'function') {
+                    html += `<div class="success">✅ ${handler} is defined</div>`;
+                } else {
+                    html += `<div class="error">❌ ${handler} is NOT defined</div>`;
+                    allPassed = false;
+                }
+            });
+            
+            if (allPassed) {
+                html += '<div class="success"><strong>🎉 All bridge handlers are working!</strong></div>';
+            } else {
+                html += '<div class="error"><strong>❌ Some bridge handlers are missing!</strong></div>';
+            }
+            
+            results.innerHTML = html;
+        }
+        
+        function testUnityEvents() {
+            const results = document.getElementById('events-results');
+            results.innerHTML = '<div class="info">Testing Unity events...</div>';
+            
+            // Test each handler
+            if (typeof window.onDoorEnter === 'function') {
+                window.onDoorEnter('test-door');
+            }
+            
+            if (typeof window.onGameStart === 'function') {
+                window.onGameStart('test-game');
+            }
+            
+            if (typeof window.onUnityReady === 'function') {
+                window.onUnityReady();
+            }
+            
+            if (typeof window.onSceneLoaded === 'function') {
+                window.onSceneLoaded('test-scene');
+            }
+            
+            if (typeof window.onPurchaseRequest === 'function') {
+                window.onPurchaseRequest('test-product');
+            }
+            
+            results.innerHTML = '<div class="success">✅ Unity events tested! Check console for logs.</div>';
+        }
+        
+        function testDoorButtons() {
+            const results = document.getElementById('door-results');
+            results.innerHTML = '<div class="info">Testing door navigation...</div>';
+            
+            const doors = ['arcade', 'record-store', 'ballroom'];
+            let html = '';
+            
+            doors.forEach(door => {
+                if (typeof window.onDoorEnter === 'function') {
+                    window.onDoorEnter(door);
+                    html += `<div class="success">✅ Triggered door: ${door}</div>`;
+                } else {
+                    html += `<div class="error">❌ Cannot trigger door: ${door} (handler missing)</div>`;
+                }
+            });
+            
+            results.innerHTML = html;
+        }
+        
+        function testUnityCommunication() {
+            const results = document.getElementById('unity-results');
+            
+            if (window.FDBridge && typeof window.FDBridge.testUnityCommunication === 'function') {
+                window.FDBridge.testUnityCommunication();
+                results.innerHTML = '<div class="success">✅ Unity communication test executed! Check console for logs.</div>';
+            } else {
+                results.innerHTML = '<div class="error">❌ FDBridge not available for Unity communication</div>';
+            }
+        }
+        
+        // Auto-check status on load
+        window.addEventListener('load', () => {
+            const statusResults = document.getElementById('status-results');
+            let html = '';
+            
+            // Check if bridge.js loaded
+            if (typeof window.onDoorEnter === 'function') {
+                html += '<div class="success">✅ Bridge handlers loaded successfully</div>';
+            } else {
+                html += '<div class="error">❌ Bridge handlers failed to load</div>';
+            }
+            
+            // Check FDBridge object
+            if (window.FDBridge) {
+                html += '<div class="success">✅ FDBridge object available</div>';
+            } else {
+                html += '<div class="error">❌ FDBridge object missing</div>';
+            }
+            
+            // Check if handlers are functions
+            const handlers = ['onDoorEnter', 'onGameStart', 'onUnityReady', 'onSceneLoaded', 'onPurchaseRequest'];
+            const readyHandlers = handlers.filter(handler => typeof window[handler] === 'function');
+            
+            html += `<div class="info">📊 Bridge Status: ${readyHandlers.length}/${handlers.length} handlers ready</div>`;
+            
+            statusResults.innerHTML = html;
+        });
+    </script>
+</body>
+</html>
+
+
+

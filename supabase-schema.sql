@@ -108,7 +108,107 @@ create table public.live_streams (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Create chat_messages table for live stream chat
+-- Create theatre_events table for Venue 5
+create table public.theatre_events (
+  id uuid default uuid_generate_v4() primary key,
+  event_id text unique not null, -- human-readable event ID like "fd-theatre-0001"
+  title text not null,
+  subtitle text,
+  description_md text,
+  start_at_iso timestamp with time zone not null,
+  end_at_iso timestamp with time zone not null,
+  visibility text check (visibility in ('listed', 'unlisted', 'private')) default 'listed',
+  age_restriction text check (age_restriction in ('all', '13+', '18+', '21+')) default 'all',
+  tags text[],
+  poster_image_url text,
+  trailer_video_url text,
+  access_mode text check (access_mode in ('ticket_required', 'invite_only', 'public_free')) default 'ticket_required',
+  max_capacity integer default 5000,
+  record_vod boolean default true,
+  enable_drm boolean default false,
+  created_by uuid references public.profiles(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create tickets table for Venue 5
+create table public.tickets (
+  id uuid default uuid_generate_v4() primary key,
+  ticket_id text unique not null, -- human-readable ticket ID
+  event_id uuid references public.theatre_events(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  type text check (type in ('free', 'paid')) not null,
+  price decimal(10,2) default 0.00,
+  currency text default 'USD',
+  purchased_at_iso timestamp with time zone default timezone('utc'::text, now()) not null,
+  admit_from_iso timestamp with time zone,
+  admit_until_iso timestamp with time zone,
+  seat_label text,
+  transferable boolean default false,
+  used_at_iso timestamp with time zone,
+  qr_code_data text,
+  stripe_payment_intent_id text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create theatre_chat_messages table for Venue 5 live chat
+create table public.theatre_chat_messages (
+  id uuid default uuid_generate_v4() primary key,
+  event_id uuid references public.theatre_events(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  message text not null,
+  message_type text check (message_type in ('message', 'announcement', 'system')) default 'message',
+  parent_message_id uuid references public.theatre_chat_messages(id) on delete cascade, -- for threaded replies
+  is_pinned boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create theatre_chat_reactions table for message reactions
+create table public.theatre_chat_reactions (
+  id uuid default uuid_generate_v4() primary key,
+  message_id uuid references public.theatre_chat_messages(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  reaction_type text not null, -- emoji or reaction type
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(message_id, user_id, reaction_type)
+);
+
+-- Create theatre_bans table for user moderation
+create table public.theatre_bans (
+  id uuid default uuid_generate_v4() primary key,
+  event_id uuid references public.theatre_events(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  banned_by uuid references public.profiles(id) not null,
+  reason text,
+  ban_type text check (ban_type in ('mute', 'ban', 'timeout')) not null,
+  expires_at timestamp with time zone, -- null for permanent bans
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create theatre_moderation_actions table for tracking moderation
+create table public.theatre_moderation_actions (
+  id uuid default uuid_generate_v4() primary key,
+  event_id uuid references public.theatre_events(id) on delete cascade not null,
+  moderator_id uuid references public.profiles(id) not null,
+  target_user_id uuid references public.profiles(id),
+  target_message_id uuid references public.theatre_chat_messages(id),
+  action_type text check (action_type in ('delete_message', 'mute_user', 'ban_user', 'pin_message', 'unpin_message')) not null,
+  reason text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create guest_usernames table for anonymous users
+create table public.guest_usernames (
+  id uuid default uuid_generate_v4() primary key,
+  username text unique not null,
+  session_id text not null, -- to track anonymous sessions
+  event_id uuid references public.theatre_events(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  expires_at timestamp with time zone not null
+);
+
+-- Create chat_messages table for live stream chat (keeping existing)
 create table public.chat_messages (
   id uuid default uuid_generate_v4() primary key,
   stream_id uuid references public.live_streams(id) on delete cascade not null,
@@ -136,6 +236,13 @@ alter table public.community_messages enable row level security;
 alter table public.message_likes enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.user_favorites enable row level security;
+alter table public.theatre_events enable row level security;
+alter table public.tickets enable row level security;
+alter table public.theatre_chat_messages enable row level security;
+alter table public.theatre_chat_reactions enable row level security;
+alter table public.theatre_bans enable row level security;
+alter table public.theatre_moderation_actions enable row level security;
+alter table public.guest_usernames enable row level security;
 
 -- Create policies for profiles
 create policy "Public profiles are viewable by everyone." on public.profiles
@@ -213,6 +320,58 @@ create policy "Users can view own favorites." on public.user_favorites
 create policy "Users can manage own favorites." on public.user_favorites
   for all using (auth.uid() = user_id);
 
+-- Create policies for theatre_events
+create policy "Anyone can view listed theatre events." on public.theatre_events
+  for select using (visibility = 'listed');
+
+create policy "Event creators can manage their events." on public.theatre_events
+  for all using (auth.uid() = created_by);
+
+-- Create policies for tickets
+create policy "Users can view own tickets." on public.tickets
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own tickets." on public.tickets
+  for insert with check (auth.uid() = user_id);
+
+-- Create policies for theatre_chat_messages
+create policy "Anyone can view theatre chat messages." on public.theatre_chat_messages
+  for select using (true);
+
+create policy "Users can insert theatre chat messages." on public.theatre_chat_messages
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own theatre chat messages." on public.theatre_chat_messages
+  for update using (auth.uid() = user_id);
+
+-- Create policies for theatre_chat_reactions
+create policy "Anyone can view theatre chat reactions." on public.theatre_chat_reactions
+  for select using (true);
+
+create policy "Users can manage own theatre chat reactions." on public.theatre_chat_reactions
+  for all using (auth.uid() = user_id);
+
+-- Create policies for theatre_bans
+create policy "Users can view theatre bans." on public.theatre_bans
+  for select using (true);
+
+create policy "Moderators can manage theatre bans." on public.theatre_bans
+  for all using (auth.uid() = banned_by);
+
+-- Create policies for theatre_moderation_actions
+create policy "Moderators can view moderation actions." on public.theatre_moderation_actions
+  for select using (auth.uid() = moderator_id);
+
+create policy "Moderators can insert moderation actions." on public.theatre_moderation_actions
+  for insert with check (auth.uid() = moderator_id);
+
+-- Create policies for guest_usernames
+create policy "Anyone can view guest usernames." on public.guest_usernames
+  for select using (true);
+
+create policy "Anyone can insert guest usernames." on public.guest_usernames
+  for insert with check (true);
+
 -- Create functions and triggers for updated_at
 create or replace function public.handle_updated_at()
 returns trigger as $$
@@ -238,6 +397,12 @@ create trigger handle_updated_at before update on public.community_messages
 create trigger handle_updated_at before update on public.live_streams
   for each row execute procedure public.handle_updated_at();
 
+create trigger handle_updated_at before update on public.theatre_events
+  for each row execute procedure public.handle_updated_at();
+
+create trigger handle_updated_at before update on public.tickets
+  for each row execute procedure public.handle_updated_at();
+
 -- Create function to automatically create profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -260,6 +425,12 @@ insert into public.products (name, description, price, type, artist, genre) valu
   ('Quantum Beats', 'Experimental electronic soundscapes', 12.99, 'digital', 'Future Bass', 'Future Bass'),
   ('Retro Wave', 'Classic 80s inspired synthwave', 29.99, 'vinyl', 'Nostalgic Nights', 'Retrowave');
 
+-- Insert sample theatre events for Venue 5
+insert into public.theatre_events (event_id, title, subtitle, description_md, start_at_iso, end_at_iso, visibility, age_restriction, tags, poster_image_url, access_mode, max_capacity) values
+  ('fd-theatre-0001', 'ZENO RELOADED Live', 'Immersive Concert Stream', 'Join us for an interdimensional music experience featuring the legendary ZENO RELOADED in a never-before-seen virtual performance.', '2025-12-13T01:00:00Z', '2025-12-13T02:30:00Z', 'listed', '13+', ARRAY['concert', 'hip-hop', 'fifth-dimension'], 'https://images.unsplash.com/photo-1571266028243-d220bc560fdd?w=600&h=400&fit=crop', 'ticket_required', 5000),
+  ('fd-theatre-0002', 'Vegas Nights: Casino Culture Deep Dive', 'Interactive Documentary', 'Exploring the glittering world of casino culture with live Q&A and behind-the-scenes footage.', '2025-12-15T20:00:00Z', '2025-12-15T21:30:00Z', 'listed', '18+', ARRAY['documentary', 'casino', 'culture'], 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=600&h=400&fit=crop', 'public_free', 3000),
+  ('fd-theatre-0003', 'Neon Dreams: Synthwave Showcase', 'Live Electronic Performance', 'A journey through cyber cities with the best synthwave artists from around the digital realm.', '2025-12-20T19:00:00Z', '2025-12-20T21:00:00Z', 'listed', 'all', ARRAY['synthwave', 'electronic', 'cyberpunk'], 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop', 'ticket_required', 2500);
+
 -- Create indexes for better performance
 create index idx_profiles_username on public.profiles(username);
 create index idx_products_artist on public.products(artist);
@@ -267,9 +438,23 @@ create index idx_products_genre on public.products(genre);
 create index idx_arcade_scores_game_score on public.arcade_scores(game_name, score desc);
 create index idx_community_messages_created_at on public.community_messages(created_at desc);
 create index idx_chat_messages_stream_created on public.chat_messages(stream_id, created_at desc);
+create index idx_theatre_events_event_id on public.theatre_events(event_id);
+create index idx_theatre_events_start_at on public.theatre_events(start_at_iso);
+create index idx_tickets_user_id on public.tickets(user_id);
+create index idx_tickets_event_id on public.tickets(event_id);
+create index idx_tickets_ticket_id on public.tickets(ticket_id);
+create index idx_theatre_chat_messages_event_created on public.theatre_chat_messages(event_id, created_at desc);
+create index idx_theatre_chat_messages_parent on public.theatre_chat_messages(parent_message_id);
+create index idx_theatre_bans_user_event on public.theatre_bans(user_id, event_id);
+create index idx_guest_usernames_username on public.guest_usernames(username);
+create index idx_guest_usernames_expires on public.guest_usernames(expires_at);
 
 -- Enable real-time for tables that need it
 alter publication supabase_realtime add table public.community_messages;
 alter publication supabase_realtime add table public.chat_messages;
 alter publication supabase_realtime add table public.arcade_scores;
 alter publication supabase_realtime add table public.live_streams;
+alter publication supabase_realtime add table public.theatre_events;
+alter publication supabase_realtime add table public.theatre_chat_messages;
+alter publication supabase_realtime add table public.theatre_chat_reactions;
+alter publication supabase_realtime add table public.tickets;
