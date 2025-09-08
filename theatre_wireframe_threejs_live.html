@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fifth Dimension • Theatre (Live-Wired + Merch)</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#0a0a0a; color:#f5f5f5; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .app { display:flex; flex-direction:column; height:100%; }
+    .header { padding:10px 16px; display:flex; align-items:center; gap:12px; background:#111; border-bottom:1px solid #222; }
+    .header .badge { padding:4px 8px; border:1px solid #333; border-radius:999px; font-size:12px; }
+    .main { flex:1; display:flex; }
+    .stage { position:relative; flex:1; }
+    .stage canvas { display:block; width:100%; height:100%; }
+    .video-wrap { position:absolute; left:6%; top:10%; width:74%; aspect-ratio:16/9; border:1px solid #333; border-radius:12px; overflow:hidden; background:#000; }
+    .video-wrap video { width:100%; height:100%; display:block; }
+    .sidebar { width:360px; max-width:40vw; border-left:1px solid #222; background:#0e0e0e; display:flex; flex-direction:column; }
+    .chat-header { padding:10px; border-bottom:1px solid #222; display:flex; align-items:center; justify-content:space-between; }
+    .chat { flex:1; overflow:auto; padding:10px; font-size:14px; }
+    .chat-input { display:flex; gap:8px; padding:10px; border-top:1px solid #222; }
+    .chat-input input { flex:1; background:#111; color:#eee; border:1px solid #333; border-radius:8px; padding:8px; }
+    .btn { background:#1f2937; color:#fff; border:1px solid #374151; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .btn:hover { filter:brightness(1.15); }
+    .controls { display:flex; gap:8px; }
+    .footer { padding:8px 16px; background:#111; border-top:1px solid #222; display:flex; gap:10px; justify-content:space-between; align-items:center; }
+    .layout-three-quarter .stage { flex: 0 0 calc(100% - 360px); }
+    .layout-fullscreen .sidebar { display:none; }
+    .system { color:#9CA3AF; font-size:12px; }
+
+    /* Merch banner (3/4 layout) */
+    .fd-merch-banner {
+      position:absolute;
+      left:6%;
+      top: calc(10% + 74% + 10px); /* under video (video has width:74% and 16:9; this is a simple approximation) */
+      width:74%;
+      min-height:84px;
+      background:linear-gradient(90deg, #0d0d0d, #141414);
+      border:1px solid #222;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    }
+    .fd-merch-thumb { width:72px; height:72px; border-radius:10px; background:#111; object-fit:cover; border:1px solid #2a2a2a; }
+    .fd-merch-info { display:flex; flex-direction:column; gap:4px; }
+    .fd-title { font-weight:600; font-size:14px; }
+    .fd-sub { font-size:12px; color:#cbd5e1; }
+    .fd-price { font-size:13px; color:#a7f3d0; }
+    .fd-merch-cta { margin-left:auto; display:flex; gap:8px; }
+    .btn-primary { background:#2563eb; border-color:#1d4ed8; }
+    .btn-ghost { background:#111; border-color:#2a2a2a; }
+
+    /* Fullscreen bottom overlay */
+    .fd-merch-overlay {
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:18px;
+      width:min(860px, 86vw);
+      min-height:84px;
+      background:rgba(10,10,10,0.88);
+      border:1px solid #2a2a2a;
+      border-radius:12px;
+      display:none; /* shown only in fullscreen layout */
+      align-items:center;
+      gap:12px;
+      padding:10px 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    /* Inline checkout containers */
+    .fd-checkout-drawer {
+      position:absolute;
+      top:0; right:0;
+      width:420px; max-width:90vw; height:100%;
+      background:#0e0e0e; border-left:1px solid #222;
+      box-shadow:-12px 0 24px rgba(0,0,0,0.35);
+      transform:translateX(100%);
+      transition:transform .25s ease;
+      z-index: 20;
+      display:flex; flex-direction:column;
+    }
+    .fd-checkout-drawer.open { transform:translateX(0); }
+
+    .fd-checkout-sheet-backdrop {
+      position:absolute; inset:0; background:rgba(0,0,0,0.5); display:none; z-index: 19;
+    }
+    .fd-checkout-sheet {
+      position:absolute; left:50%; top:54%;
+      transform:translate(-50%,-50%);
+      width:min(520px, 92vw);
+      background:#0e0e0e; border:1px solid #222; border-radius:16px;
+      box-shadow:0 16px 40px rgba(0,0,0,0.45);
+      display:flex; flex-direction:column;
+    }
+    .fd-checkout-sheet-backdrop.open { display:block; }
+
+    .fd-checkout-head { padding:14px 16px; border-bottom:1px solid #222; display:flex; align-items:center; justify-content:space-between; }
+    .fd-checkout-body { padding:16px; display:flex; flex-direction:column; gap:12px; overflow:auto; max-height:60vh; }
+    .fd-checkout-footer { padding:12px 16px; border-top:1px solid #222; display:flex; justify-content:flex-end; gap:10px; }
+    .fd-field { display:flex; flex-direction:column; gap:6px; }
+    .fd-field input, .fd-field select {
+      background:#111; color:#eee; border:1px solid #333; border-radius:8px; padding:10px;
+    }
+
+    /* Utility for hiding/showing */
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body class="layout-three-quarter">
+  <div class="app">
+    <div class="header">
+      <strong id="eventTitle">ZENO RELOADED Live (Demo)</strong>
+      <span class="badge" id="ticketBadge">Access: public_free</span>
+      <div class="controls" style="margin-left:auto">
+        <button class="btn" id="toggleLayoutBtn">Toggle Fullscreen / 3/4</button>
+        <button class="btn" id="pipBtn">Picture-in-Picture</button>
+        <button class="btn" id="reportBtn">Report Issue</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="stage">
+        <canvas id="three"></canvas>
+
+        <!-- Video -->
+        <div class="video-wrap">
+          <video id="video" playsinline controls></video>
+        </div>
+
+        <!-- Merch banner (3/4 layout) -->
+        <div class="fd-merch-banner" id="merchBanner">
+          <img class="fd-merch-thumb" id="offerThumb" alt="" />
+          <div class="fd-merch-info">
+            <div class="fd-title" id="offerTitle">5D Signature Tee</div>
+            <div class="fd-sub" id="offerSub">Cosmic Blue Edition</div>
+            <div class="fd-price" id="offerPrice">$32.00</div>
+          </div>
+          <div class="fd-merch-cta">
+            <button class="btn btn-ghost" id="nextOfferBtn">Next</button>
+            <button class="btn btn-primary" id="buyNowBtn">Buy Now</button>
+          </div>
+        </div>
+
+        <!-- Merch overlay (fullscreen layout only) -->
+        <div class="fd-merch-overlay" id="merchOverlay">
+          <img class="fd-merch-thumb" id="overlayThumb" alt="" />
+          <div class="fd-merch-info">
+            <div class="fd-title" id="overlayTitle">5D Signature Tee</div>
+            <div class="fd-sub" id="overlaySub">Cosmic Blue Edition</div>
+            <div class="fd-price" id="overlayPrice">$32.00</div>
+          </div>
+          <div class="fd-merch-cta">
+            <button class="btn btn-ghost" id="nextOfferBtnFs">Next</button>
+            <button class="btn btn-primary" id="buyNowBtnFs">Buy Now</button>
+          </div>
+        </div>
+
+        <!-- Inline checkout: drawer (3/4) -->
+        <div class="fd-checkout-drawer" id="checkoutDrawer">
+          <div class="fd-checkout-head">
+            <div>Checkout</div>
+            <button class="btn btn-ghost" id="closeDrawer">Close</button>
+          </div>
+          <div class="fd-checkout-body" id="checkoutBodyDrawer"></div>
+          <div class="fd-checkout-footer">
+            <button class="btn" id="cancelDrawer">Cancel</button>
+            <button class="btn btn-primary" id="payDrawer">Pay</button>
+          </div>
+        </div>
+
+        <!-- Inline checkout: sheet (fullscreen) -->
+        <div class="fd-checkout-sheet-backdrop" id="sheetBackdrop">
+          <div class="fd-checkout-sheet" id="checkoutSheet">
+            <div class="fd-checkout-head">
+              <div>Checkout</div>
+              <button class="btn btn-ghost" id="closeSheet">Close</button>
+            </div>
+            <div class="fd-checkout-body" id="checkoutBodySheet"></div>
+            <div class="fd-checkout-footer">
+              <button class="btn" id="cancelSheet">Cancel</button>
+              <button class="btn btn-primary" id="paySheet">Pay</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chat -->
+      <aside class="sidebar">
+        <div class="chat-header">
+          <div>Live Chat</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn" id="pinBtn">Pin</button>
+            <button class="btn" id="slowBtn">Slow</button>
+          </div>
+        </div>
+        <div class="chat" id="chat"></div>
+        <div class="chat-input">
+          <input id="name" placeholder="Guest username" />
+          <input id="msg" placeholder="Say something nice…" />
+          <button class="btn" id="send">Send</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="footer">
+      <div>© Fifth Dimension • Theatre (Live-Wired + Merch)</div>
+      <div>Layout: <span id="layoutLabel">3/4 with chat</span></div>
+    </div>
+  </div>
+
+  <!-- Three.js and hls.js -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <script>
+    const EVENT_ID = 'demo';
+    const API = 'http://localhost:4000';
+    const WS = 'ws://localhost:4000';
+    const DUMMY_HLS = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+
+    // Layout toggle
+    const body = document.body;
+    const layoutLabel = document.getElementById('layoutLabel');
+    const merchBanner = document.getElementById('merchBanner');
+    const merchOverlay = document.getElementById('merchOverlay');
+
+    document.getElementById('toggleLayoutBtn').onclick = () => {
+      if (body.classList.contains('layout-three-quarter')) {
+        body.classList.remove('layout-three-quarter');
+        body.classList.add('layout-fullscreen');
+        layoutLabel.textContent = 'Fullscreen (chat hidden)';
+        merchOverlay.style.display = 'flex';
+      } else {
+        body.classList.remove('layout-fullscreen');
+        body.classList.add('layout-three-quarter');
+        layoutLabel.textContent = '3/4 with chat';
+        merchOverlay.style.display = 'none';
+      }
+      onResize();
+    };
+
+    // ----- Three.js cosmic ambience -----
+    const canvas = document.getElementById('three');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, 2, 0.1, 2000);
+    camera.position.set(0, 0.8, 2.6);
+
+    // Soft key + fill to give a sheen on any foreground geo (optional)
+    const key = new THREE.DirectionalLight(0x8ec5ff, 0.6);
+    key.position.set(2, 3, 4);
+    scene.add(key);
+    scene.add(new THREE.AmbientLight(0x88aaff, 0.18));
+
+    // Starfield helper
+    function makeStarfield({count=4000, spread=600, size=0.8, color=0xffffff, speed=0.0007}) {
+      const geo = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      for (let i=0;i<count;i++){
+        // Fibonacci-ish sphere -> project into far shell, then jitter inward for depth spread
+        const theta = Math.acos(1 - 2*Math.random());
+        const phi = 2*Math.PI*Math.random();
+        const r = spread * (0.2 + 0.8*Math.random()); // 20% to 100% of spread
+        positions[i*3+0] = r * Math.sin(theta) * Math.cos(phi);
+        positions[i*3+1] = r * Math.cos(theta) * 0.6; // squash a bit vertically
+        positions[i*3+2] = r * Math.sin(theta) * Math.sin(phi);
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        size: size, color, transparent:true, opacity:0.95,
+        sizeAttenuation:true, depthWrite:false, blending:THREE.AdditiveBlending
+      });
+      const points = new THREE.Points(geo, mat);
+      points.userData.speed = speed;
+      return points;
+    }
+
+    // Two layers for parallax depth
+    const starsNear = makeStarfield({count: 2500, spread: 380, size: 1.2, color: 0xffffff, speed: 0.0009});
+    const starsFar  = makeStarfield({count: 4500, spread: 900, size: 0.9, color: 0x99bbff, speed: 0.0004});
+    scene.add(starsFar);
+    scene.add(starsNear);
+
+    // Procedural "nebula puffs" using sprite gradients
+    function makeRadialTexture(size=128, inner= 'rgba(120,180,255,0.35)', outer='rgba(0,0,0,0)'){
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(size/2,size/2, 0, size/2,size/2, size/2);
+      grd.addColorStop(0, inner);
+      grd.addColorStop(1, outer);
+      g.fillStyle = grd; g.fillRect(0,0,size,size);
+      const tx = new THREE.Texture(c); tx.needsUpdate = true; return tx;
+    }
+    const nebulaTex1 = makeRadialTexture(256, 'rgba(124,58,237,0.25)');
+    const nebulaTex2 = makeRadialTexture(256, 'rgba(59,130,246,0.22)');
+    function addNebulaSprite(tex, scale= new THREE.Vector3(6,6,1), pos= new THREE.Vector3(0,0,-3), rotSpeed=0.00015){
+      const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, depthWrite:false, transparent:true, blending:THREE.AdditiveBlending });
+      const s = new THREE.Sprite(mat);
+      s.position.copy(pos);
+      s.scale.copy(scale);
+      s.userData.rotSpeed = rotSpeed;
+      scene.add(s);
+      return s;
+    }
+    const nebula1 = addNebulaSprite(nebulaTex1, new THREE.Vector3(8,8,1), new THREE.Vector3(-2, -0.8, -6), 0.00012);
+    const nebula2 = addNebulaSprite(nebulaTex2, new THREE.Vector3(10,10,1), new THREE.Vector3(2.4, 0.6, -7), 0.00009);
+
+    // Gentle camera drift (feels like floating)
+    let t = 0;
+    function animate() {
+      t += 0.0015;
+      const sway = 0.08, bob = 0.03;
+      camera.position.x = Math.sin(t*0.8) * sway;
+      camera.position.y = 0.8 + Math.sin(t*1.4) * bob;
+      camera.lookAt(0,0,0);
+
+      // Parallax drift & twinkle
+      starsNear.rotation.y += starsNear.userData.speed;
+      starsFar.rotation.y  += starsFar.userData.speed * 0.6;
+
+      // Slow nebula swirl
+      nebula1.material.opacity = 0.55 + 0.15*Math.sin(t*0.8);
+      nebula2.material.opacity = 0.45 + 0.20*Math.cos(t*0.6);
+      nebula1.rotation += nebula1.userData.rotSpeed;
+      nebula2.rotation -= nebula2.userData.rotSpeed;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    // Resize
+    function onResize() {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const width = rect.width, height = rect.height;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+    animate();
+
+    // ----- Video player (HLS) -----
+    const video = document.getElementById('video');
+    function attachHLS(url) {
+      if (video.canPlayType('application/vnd.apple.mpegURL')) {
+        video.src = url; // Safari
+      } else if (window.Hls && window.Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else {
+        console.warn('HLS not supported');
+      }
+    }
+    attachHLS(DUMMY_HLS);
+    document.getElementById('pipBtn').onclick = () => {
+      if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+        if (document.pictureInPictureElement) document.exitPictureInPicture();
+        else video.requestPictureInPicture().catch(()=>{});
+      }
+    };
+    document.getElementById('reportBtn').onclick = () => alert('Open support modal / link to help.');
+
+    // ----- REST: load event metadata + chat history -----
+    async function loadEvent() {
+      try {
+        const res = await fetch(`${API}/api/events/${EVENT_ID}`);
+        if (!res.ok) return;
+        const ev = await res.json();
+        document.getElementById('eventTitle').textContent = ev.title || 'Fifth Dimension Live';
+        document.getElementById('ticketBadge').textContent = 'Access: ' + (ev.access_mode || 'ticket_required');
+      } catch {}
+    }
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API}/api/events/${EVENT_ID}/chat/history`);
+        if (!res.ok) return;
+        const arr = await res.json();
+        for (const m of arr) appendMsg(m.user, m.text, m.ts, true);
+      } catch {}
+    }
+
+    // ----- WS chat -----
+    const chatEl = document.getElementById('chat');
+    const nameEl = document.getElementById('name');
+    const msgEl = document.getElementById('msg');
+    const ws = new WebSocket(`${WS}/events/${EVENT_ID}/chat`);
+    ws.onopen = () => appendSystem('Connected to chat.');
+    ws.onclose = () => appendSystem('Disconnected.');
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'chat_message') {
+          const p = msg.payload;
+          appendMsg(p.user, p.text, p.ts);
+        }
+      } catch {}
+    };
+
+    function appendMsg(user, text, ts, history=false) {
+      const div = document.createElement('div');
+      const time = new Date(ts || Date.now()).toLocaleTimeString();
+      div.textContent = `[${time}] ${user}: ${text}`;
+      if (history) div.classList.add('system');
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+    function appendSystem(text) {
+      const div = document.createElement('div');
+      div.className = 'system';
+      div.textContent = `• ${text}`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    document.getElementById('send').onclick = async () => {
+      const who = (nameEl.value || 'Guest_' + Math.floor(Math.random()*9999)).slice(0, 20);
+      const txt = (msgEl.value || '').slice(0, 400);
+      if (!txt) return;
+      try {
+        await fetch(`${API}/api/events/${EVENT_ID}/chat/post`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: who, text: txt })
+        });
+        msgEl.value = '';
+      } catch {}
+    };
+
+    loadEvent();
+    loadHistory();
+
+    // ---------------------------
+    // Merch / Events + Inline Checkout
+    // ---------------------------
+    const sampleOffers = [
+      {
+        id: 'offer-tee-001',
+        type: 'product',
+        title: '5D Signature Tee',
+        subtitle: 'Cosmic Blue Edition',
+        thumb_url: 'https://picsum.photos/seed/5dtee/200/200',
+        price_cents: 3200, currency: 'USD'
+      },
+      {
+        id: 'offer-event-zeno-002',
+        type: 'event',
+        title: 'ZENO RELOADED — Next Show',
+        subtitle: 'Early Bird Live Stream',
+        thumb_url: 'https://picsum.photos/seed/zeno/200/200',
+        price_cents: 1500, currency: 'USD'
+      }
+    ];
+    let offerIndex = 0;
+    function fmtPrice(cents, cur='USD'){ return new Intl.NumberFormat('en-US',{style:'currency',currency:cur}).format((cents||0)/100); }
+
+    // Elements for banner
+    const offerThumb = document.getElementById('offerThumb');
+    const offerTitle = document.getElementById('offerTitle');
+    const offerSub = document.getElementById('offerSub');
+    const offerPrice = document.getElementById('offerPrice');
+
+    // Elements for overlay
+    const overlayThumb = document.getElementById('overlayThumb');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlaySub = document.getElementById('overlaySub');
+    const overlayPrice = document.getElementById('overlayPrice');
+
+    function setOfferUI(o) {
+      // Banner
+      offerThumb.src = o.thumb_url; offerTitle.textContent = o.title; offerSub.textContent = o.subtitle; offerPrice.textContent = fmtPrice(o.price_cents, o.currency);
+      // Overlay
+      overlayThumb.src = o.thumb_url; overlayTitle.textContent = o.title; overlaySub.textContent = o.subtitle; overlayPrice.textContent = fmtPrice(o.price_cents, o.currency);
+      // Data refs (for checkout)
+      document.getElementById('buyNowBtn').dataset.offerId = o.id;
+      document.getElementById('buyNowBtnFs').dataset.offerId = o.id;
+    }
+    setOfferUI(sampleOffers[offerIndex]);
+
+    // Rotate offers
+    function nextOffer() {
+      offerIndex = (offerIndex + 1) % sampleOffers.length;
+      setOfferUI(sampleOffers[offerIndex]);
+    }
+    document.getElementById('nextOfferBtn').onclick = nextOffer;
+    document.getElementById('nextOfferBtnFs').onclick = nextOffer;
+
+    // Checkout UIs
+    const checkoutDrawer = document.getElementById('checkoutDrawer');
+    const checkoutBodyDrawer = document.getElementById('checkoutBodyDrawer');
+    const checkoutSheetBackdrop = document.getElementById('sheetBackdrop');
+    const checkoutBodySheet = document.getElementById('checkoutBodySheet');
+
+    function renderCheckoutBody(container, offer) {
+      container.innerHTML = `
+        <div class="fd-field">
+          <label>Item</label>
+          <div style="display:flex;gap:10px;align-items:center">
+            <img src="${offer.thumb_url}" alt="" style="width:56px;height:56px;border-radius:10px;border:1px solid #2a2a2a;object-fit:cover"/>
+            <div>
+              <div style="font-weight:600">${offer.title}</div>
+              <div style="font-size:12px;color:#cbd5e1">${offer.subtitle || ''}</div>
+              <div style="margin-top:6px;color:#a7f3d0">${fmtPrice(offer.price_cents, offer.currency)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="fd-field">
+          <label>Quantity</label>
+          <select id="qtySelect">
+            <option value="1" selected>1</option>
+            <option value="2">2</option><option value="3">3</option>
+          </select>
+        </div>
+        <div class="fd-field">
+          <label>Payment Method (demo)</label>
+          <select id="payMethod">
+            <option>Card (demo)</option>
+            <option>Apple Pay (demo)</option>
+            <option>Google Pay (demo)</option>
+          </select>
+        </div>
+      `;
+    }
+
+    function openCheckout(offerId) {
+      const offer = sampleOffers.find(o => o.id === offerId) || sampleOffers[0];
+      if (body.classList.contains('layout-three-quarter')) {
+        renderCheckoutBody(checkoutBodyDrawer, offer);
+        checkoutDrawer.classList.add('open');
+      } else {
+        renderCheckoutBody(checkoutBodySheet, offer);
+        checkoutSheetBackdrop.classList.add('open');
+      }
+    }
+    function closeCheckout() {
+      checkoutDrawer.classList.remove('open');
+      checkoutSheetBackdrop.classList.remove('open');
+    }
+
+    document.getElementById('buyNowBtn').onclick = (e)=> openCheckout(e.currentTarget.dataset.offerId);
+    document.getElementById('buyNowBtnFs').onclick = (e)=> openCheckout(e.currentTarget.dataset.offerId);
+
+    document.getElementById('closeDrawer').onclick = closeCheckout;
+    document.getElementById('cancelDrawer').onclick = closeCheckout;
+    document.getElementById('closeSheet').onclick = closeCheckout;
+    document.getElementById('cancelSheet').onclick = closeCheckout;
+
+    // Demo "Pay" (no real processor yet; keeps video playing)
+    function demoPay() {
+      alert('✅ Payment confirmed (demo). Video keeps playing, no page navigation.');
+      closeCheckout();
+    }
+    document.getElementById('payDrawer').onclick = demoPay;
+    document.getElementById('paySheet').onclick = demoPay;
+
+    // Show/hide correct merch placement on load
+    function syncMerchPlacement() {
+      const isFs = body.classList.contains('layout-fullscreen');
+      merchOverlay.style.display = isFs ? 'flex' : 'none';
+      // banner stays visible in 3/4; overlay only in fullscreen
+    }
+    syncMerchPlacement();
+
+  </script>
+</body>
+</html>

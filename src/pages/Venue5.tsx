@@ -23,12 +23,18 @@ import {
   Crown,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  BarChart3
 } from 'lucide-react'
 import { useSupabase } from '../contexts/SupabaseContext'
 import { useAuth } from '../contexts/AuthContext'
 import { VideoPlayer } from '../components/venue5/VideoPlayer'
 import { TicketingSystem } from '../components/venue5/TicketingSystem'
+import { AdvancedTicketingSystem } from '../components/venue5/AdvancedTicketingSystem'
+import { AuthModal } from '../components/venue5/AuthModal'
+import { EventManager } from '../components/venue5/EventManager'
+import { ModerationPanel } from '../components/venue5/ModerationPanel'
+import { AnalyticsDashboard } from '../components/venue5/AnalyticsDashboard'
 import { theatreApi, TheatreEvent, TheatreTicket, ChatMessage } from '../services/theatreApi'
 
 // Use types from theatreApi service
@@ -57,9 +63,18 @@ export const Venue5: React.FC = () => {
   const [isSlowMode, setIsSlowMode] = useState(false)
   const [slowModeDelay, setSlowModeDelay] = useState(0)
   const [showTicketing, setShowTicketing] = useState(false)
+  const [useAdvancedTicketing, setUseAdvancedTicketing] = useState(true)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [showCaptions, setShowCaptions] = useState(false)
+  
+  // New state for additional features
+  const [showAuth, setShowAuth] = useState(false)
+  const [showEventManager, setShowEventManager] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -107,10 +122,53 @@ export const Venue5: React.FC = () => {
     }
   ]
 
+  const checkAuthentication = async () => {
+    const token = localStorage.getItem('theatre_token')
+    const userData = localStorage.getItem('theatre_user')
+    
+    if (token && userData) {
+      try {
+        const response = await fetch('http://localhost:4000/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUser(data.user)
+          setIsAuthenticated(true)
+        } else {
+          // Token expired or invalid
+          localStorage.removeItem('theatre_token')
+          localStorage.removeItem('theatre_user')
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err)
+        localStorage.removeItem('theatre_token')
+        localStorage.removeItem('theatre_user')
+      }
+    }
+  }
+
+  const handleAuthSuccess = (user: any) => {
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+    setShowAuth(false)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('theatre_token')
+    localStorage.removeItem('theatre_user')
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+  }
+
   useEffect(() => {
     // Set default event
     setCurrentEvent(mockEvents[0])
     setViewerCount(1247)
+    checkAuthentication()
     
     // Simulate viewer count changes
     const interval = setInterval(() => {
@@ -309,6 +367,62 @@ export const Venue5: React.FC = () => {
                 </div>
               )}
               
+              {/* Authentication */}
+              {!isAuthenticated ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => setShowAuth(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Sign In
+                </motion.button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-300">{currentUser?.display_name}</span>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    onClick={handleLogout}
+                    className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors"
+                  >
+                    Logout
+                  </motion.button>
+                </div>
+              )}
+
+              {/* Feature Buttons */}
+              {isAuthenticated && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => setShowEventManager(true)}
+                    className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                    title="Event Manager"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </motion.button>
+                  
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      onClick={() => setShowModeration(true)}
+                      className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                      title="Moderation Panel"
+                    >
+                      <Shield className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => setShowAnalytics(true)}
+                    className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                    title="Analytics Dashboard"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                  </motion.button>
+                </>
+              )}
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 onClick={() => setLayoutMode(layoutMode === 'fullscreen' ? 'three_quarter' : 'fullscreen')}
@@ -610,10 +724,78 @@ export const Venue5: React.FC = () => {
 
       {/* Ticketing System Modal */}
       {showTicketing && currentEvent && (
-        <TicketingSystem
-          event={currentEvent}
-          onTicketPurchased={handleTicketPurchased}
-          onClose={() => setShowTicketing(false)}
+        useAdvancedTicketing ? (
+          <AdvancedTicketingSystem
+            event={currentEvent}
+            onTicketPurchased={handleTicketPurchased}
+            onClose={() => setShowTicketing(false)}
+            currentUser={currentUser}
+          />
+        ) : (
+          <TicketingSystem
+            event={currentEvent}
+            onTicketPurchased={handleTicketPurchased}
+            onClose={() => setShowTicketing(false)}
+          />
+        )
+      )}
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuth}
+        onClose={() => setShowAuth(false)}
+        onAuthSuccess={handleAuthSuccess}
+        mode="login"
+      />
+
+      {/* Event Manager Modal */}
+      {showEventManager && currentEvent && (
+        <EventManager
+          isOpen={showEventManager}
+          onClose={() => setShowEventManager(false)}
+          onEventCreated={(event) => {
+            console.log('Event created:', event)
+            setShowEventManager(false)
+          }}
+          onEventUpdated={(event) => {
+            console.log('Event updated:', event)
+            setShowEventManager(false)
+          }}
+          onEventDeleted={(eventId) => {
+            console.log('Event deleted:', eventId)
+            setShowEventManager(false)
+          }}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* Moderation Panel Modal */}
+      {showModeration && currentEvent && (
+        <ModerationPanel
+          isOpen={showModeration}
+          onClose={() => setShowModeration(false)}
+          eventId={currentEvent.id}
+          currentUser={currentUser}
+          chatMessages={chatMessages}
+          onMessageDeleted={(messageId) => {
+            setChatMessages(prev => prev.filter(msg => msg.id !== messageId))
+          }}
+          onUserMuted={(userId, duration) => {
+            console.log(`User ${userId} muted for ${duration} minutes`)
+          }}
+          onUserBanned={(userId, reason, isPermanent) => {
+            console.log(`User ${userId} banned: ${reason} (permanent: ${isPermanent})`)
+          }}
+        />
+      )}
+
+      {/* Analytics Dashboard Modal */}
+      {showAnalytics && currentEvent && (
+        <AnalyticsDashboard
+          isOpen={showAnalytics}
+          onClose={() => setShowAnalytics(false)}
+          eventId={currentEvent.id}
+          currentUser={currentUser}
         />
       )}
     </div>
