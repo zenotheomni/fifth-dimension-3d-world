@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fifth Dimension • Theatre (Live-Wired)</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#0a0a0a; color:#f5f5f5; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .app { display:flex; flex-direction:column; height:100%; }
+    .header { padding:10px 16px; display:flex; align-items:center; gap:12px; background:#111; border-bottom:1px solid #222; }
+    .header .badge { padding:4px 8px; border:1px solid #333; border-radius:999px; font-size:12px; }
+    .main { flex:1; display:flex; }
+    .stage { position:relative; flex:1; }
+    .stage canvas { display:block; width:100%; height:100%; }
+    .video-wrap { position:absolute; left:6%; top:10%; width:74%; aspect-ratio:16/9; border:1px solid #333; border-radius:12px; overflow:hidden; background:#000; }
+    .video-wrap video { width:100%; height:100%; display:block; }
+    .sidebar { width:360px; max-width:40vw; border-left:1px solid #222; background:#0e0e0e; display:flex; flex-direction:column; }
+    .chat-header { padding:10px; border-bottom:1px solid #222; display:flex; align-items:center; justify-content:space-between; }
+    .chat { flex:1; overflow:auto; padding:10px; font-size:14px; }
+    .chat-input { display:flex; gap:8px; padding:10px; border-top:1px solid #222; }
+    .chat-input input { flex:1; background:#111; color:#eee; border:1px solid #333; border-radius:8px; padding:8px; }
+    .btn { background:#1f2937; color:#fff; border:1px solid #374151; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .btn:hover { filter:brightness(1.15); }
+    .controls { display:flex; gap:8px; }
+    .footer { padding:8px 16px; background:#111; border-top:1px solid #222; display:flex; gap:10px; justify-content:space-between; align-items:center; }
+    .layout-three-quarter .stage { flex: 0 0 calc(100% - 360px); }
+    .layout-fullscreen .sidebar { display:none; }
+    .system { color:#9CA3AF; font-size:12px; }
+  </style>
+</head>
+<body class="layout-three-quarter">
+  <div class="app">
+    <div class="header">
+      <strong id="eventTitle">ZENO RELOADED Live (Demo)</strong>
+      <span class="badge" id="ticketBadge">Access: public_free</span>
+      <div class="controls" style="margin-left:auto">
+        <button class="btn" id="toggleLayoutBtn">Toggle Fullscreen / 3/4</button>
+        <button class="btn" id="pipBtn">Picture-in-Picture</button>
+        <button class="btn" id="reportBtn">Report Issue</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="stage">
+        <canvas id="three"></canvas>
+        <div class="video-wrap">
+          <video id="video" playsinline controls></video>
+        </div>
+      </div>
+      <aside class="sidebar">
+        <div class="chat-header">
+          <div>Live Chat</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn" id="pinBtn">Pin</button>
+            <button class="btn" id="slowBtn">Slow</button>
+          </div>
+        </div>
+        <div class="chat" id="chat"></div>
+        <div class="chat-input">
+          <input id="name" placeholder="Guest username" />
+          <input id="msg" placeholder="Say something nice…" />
+          <button class="btn" id="send">Send</button>
+        </div>
+      </aside>
+    </div>
+    <div class="footer">
+      <div>© Fifth Dimension • Theatre (Live-Wired)</div>
+      <div>Layout: <span id="layoutLabel">3/4 with chat</span></div>
+    </div>
+  </div>
+
+  <!-- Three.js (stage decor) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <!-- hls.js for HLS playback in non-Safari browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <script>
+    const EVENT_ID = 'demo';
+    const API = 'http://localhost:4000';
+    const WS = 'ws://localhost:4000';
+    const DUMMY_HLS = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+
+    // Layout
+    const body = document.body;
+    const layoutLabel = document.getElementById('layoutLabel');
+    document.getElementById('toggleLayoutBtn').onclick = () => {
+      if (body.classList.contains('layout-three-quarter')) {
+        body.classList.remove('layout-three-quarter');
+        body.classList.add('layout-fullscreen');
+        layoutLabel.textContent = 'Fullscreen (chat hidden)';
+      } else {
+        body.classList.remove('layout-fullscreen');
+        body.classList.add('layout-three-quarter');
+        layoutLabel.textContent = '3/4 with chat';
+      }
+      onResize();
+    };
+
+    // ----- Three.js ambient scene -----
+    const canvas = document.getElementById('three');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0a);
+    const camera = new THREE.PerspectiveCamera(55, 2, 0.1, 100);
+    camera.position.set(0, 1.2, 3);
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    key.position.set(2, 3, 4);
+    scene.add(key);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+    const group = new THREE.Group();
+    scene.add(group);
+    const frameGeo = new THREE.RingGeometry(0.9, 0.93, 64);
+    const frameMat = new THREE.MeshBasicMaterial({ color: 0x66ccff });
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.set(0, 1.1, -0.1);
+    frame.scale.set(1.6, 1.0, 1);
+    group.add(frame);
+
+    function animate() {
+      frame.rotation.z += 0.003;
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    function onResize() {
+      const rect = renderer.domElement.getBoundingClientRect();
+      renderer.setSize(rect.width, rect.height, false);
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+    animate();
+
+    // ----- Video player (HLS) -----
+    const video = document.getElementById('video');
+    function attachHLS(url) {
+      if (video.canPlayType('application/vnd.apple.mpegURL')) {
+        video.src = url; // Safari
+      } else if (window.Hls && window.Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else {
+        console.warn('HLS not supported');
+      }
+    }
+    attachHLS(DUMMY_HLS);
+    document.getElementById('pipBtn').onclick = () => {
+      if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+        if (document.pictureInPictureElement) document.exitPictureInPicture();
+        else video.requestPictureInPicture().catch(()=>{});
+      }
+    };
+    document.getElementById('reportBtn').onclick = () => alert('Open support modal / link to help.');
+
+    // ----- REST: load event metadata + chat history -----
+    async function loadEvent() {
+      try {
+        const res = await fetch(`${API}/api/events/${EVENT_ID}`);
+        if (!res.ok) return;
+        const ev = await res.json();
+        document.getElementById('eventTitle').textContent = ev.title || 'Fifth Dimension Live';
+        document.getElementById('ticketBadge').textContent = 'Access: ' + (ev.access_mode || 'ticket_required');
+      } catch {}
+    }
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API}/api/events/${EVENT_ID}/chat/history`);
+        if (!res.ok) return;
+        const arr = await res.json();
+        for (const m of arr) appendMsg(m.user, m.text, m.ts, true);
+      } catch {}
+    }
+
+    // ----- WS chat -----
+    const chatEl = document.getElementById('chat');
+    const nameEl = document.getElementById('name');
+    const msgEl = document.getElementById('msg');
+    const ws = new WebSocket(`${WS}/events/${EVENT_ID}/chat`);
+    ws.onopen = () => appendSystem('Connected to chat.');
+    ws.onclose = () => appendSystem('Disconnected.');
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'chat_message') {
+          const p = msg.payload;
+          appendMsg(p.user, p.text, p.ts);
+        }
+      } catch {}
+    };
+
+    function appendMsg(user, text, ts, history=false) {
+      const div = document.createElement('div');
+      const time = new Date(ts || Date.now()).toLocaleTimeString();
+      div.textContent = `[${time}] ${user}: ${text}`;
+      if (history) div.classList.add('system');
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+    function appendSystem(text) {
+      const div = document.createElement('div');
+      div.className = 'system';
+      div.textContent = `• ${text}`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    document.getElementById('send').onclick = async () => {
+      const who = (nameEl.value || 'Guest_' + Math.floor(Math.random()*9999)).slice(0, 20);
+      const txt = (msgEl.value || '').slice(0, 400);
+      if (!txt) return;
+      try {
+        await fetch(`${API}/api/events/${EVENT_ID}/chat/post`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: who, text: txt })
+        });
+        msgEl.value = '';
+      } catch {}
+    };
+
+    loadEvent();
+    loadHistory();
+  </script>
+</body>
+</html>

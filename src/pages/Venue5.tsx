@@ -29,71 +29,14 @@ import { useSupabase } from '../contexts/SupabaseContext'
 import { useAuth } from '../contexts/AuthContext'
 import { VideoPlayer } from '../components/venue5/VideoPlayer'
 import { TicketingSystem } from '../components/venue5/TicketingSystem'
+import { theatreApi, TheatreEvent, TheatreTicket, ChatMessage } from '../services/theatreApi'
 
-// Types based on the theatre room specification
-interface TheatreEvent {
-  id: string
-  event_id: string
-  title: string
-  subtitle?: string
-  description_md?: string
-  start_at_iso: string
-  end_at_iso: string
-  visibility: 'listed' | 'unlisted' | 'private'
-  age_restriction: 'all' | '13+' | '18+' | '21+'
-  tags: string[]
-  poster_image_url?: string
-  trailer_video_url?: string
-  access_mode: 'ticket_required' | 'invite_only' | 'public_free'
-  max_capacity: number
-  record_vod: boolean
-  enable_drm: boolean
-  created_by?: string
-  created_at: string
-  updated_at: string
-}
-
-interface Ticket {
-  id: string
-  ticket_id: string
-  event_id: string
-  user_id: string
-  type: 'free' | 'paid'
-  price: number
-  currency: string
-  purchased_at_iso: string
-  admit_from_iso?: string
-  admit_until_iso?: string
-  seat_label?: string
-  transferable: boolean
-  used_at_iso?: string
-  qr_code_data?: string
-  stripe_payment_intent_id?: string
-  created_at: string
-  updated_at: string
-}
-
-interface TheatreChatMessage {
-  id: string
-  event_id: string
-  user_id: string
-  message: string
-  message_type: 'message' | 'announcement' | 'system'
-  parent_message_id?: string
-  is_pinned: boolean
-  created_at: string
+// Use types from theatreApi service
+type Ticket = TheatreTicket;
+type TheatreChatMessage = ChatMessage & {
   user_name?: string
   user_level?: number
   user_badge?: 'Host' | 'Mod' | 'Artist' | 'VIP'
-}
-
-interface GuestUsername {
-  id: string
-  username: string
-  session_id: string
-  event_id: string
-  created_at: string
-  expires_at: string
 }
 
 export const Venue5: React.FC = () => {

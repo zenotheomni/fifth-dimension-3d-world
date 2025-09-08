@@ -11,7 +11,9 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "unity:build": "echo 'Build Unity project to ./public/UnityBuild/'",
     "test:unity": "node scripts/test-unity-integration.js",
-    "deploy": "npm run build && npm run unity:build"
+    "deploy": "npm run build && npm run unity:build",
+    "theatre:api": "node theatre-api-server.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run theatre:api\""
   },
   "dependencies": {
     "@react-three/drei": "^9.114.3",
@@ -19,7 +21,10 @@
     "@stripe/react-stripe-js": "^2.8.1",
     "@stripe/stripe-js": "^4.8.0",
     "@supabase/supabase-js": "^2.46.1",
+    "body-parser": "^2.2.0",
     "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "framer-motion": "^11.11.7",
     "lucide-react": "^0.451.0",
     "react": "^18.3.1",
@@ -27,7 +32,8 @@
     "react-router-dom": "^6.27.0",
     "tailwind-merge": "^2.5.3",
     "three": "^0.169.0",
-    "three-stdlib": "^2.36.0"
+    "three-stdlib": "^2.36.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
@@ -37,6 +43,7 @@
     "@typescript-eslint/parser": "^8.8.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^8.2.2",
     "eslint": "^9.12.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.12",

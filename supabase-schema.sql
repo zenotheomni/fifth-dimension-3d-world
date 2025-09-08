@@ -108,104 +108,116 @@ create table public.live_streams (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Fifth Dimension Theatre Room - Postgres Schema (v1.0)
+-- Updated to match refined theatre room specification
+
+-- Create theatre_users table (extends auth.users for theatre-specific features)
+create table public.theatre_users (
+  id uuid primary key default uuid_generate_v4(),
+  email text unique,
+  phone text,
+  guest_username text unique,
+  password_hash text,
+  role text not null default 'viewer' check (role in ('viewer', 'mod', 'host', 'artist')),
+  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone('utc'::text, now())
+);
+
 -- Create theatre_events table for Venue 5
 create table public.theatre_events (
-  id uuid default uuid_generate_v4() primary key,
-  event_id text unique not null, -- human-readable event ID like "fd-theatre-0001"
+  id uuid primary key default uuid_generate_v4(),
   title text not null,
   subtitle text,
   description_md text,
-  start_at_iso timestamp with time zone not null,
-  end_at_iso timestamp with time zone not null,
-  visibility text check (visibility in ('listed', 'unlisted', 'private')) default 'listed',
-  age_restriction text check (age_restriction in ('all', '13+', '18+', '21+')) default 'all',
-  tags text[],
+  start_at timestamp with time zone not null,
+  end_at timestamp with time zone,
+  visibility text not null default 'listed' check (visibility in ('listed', 'unlisted', 'private')),
+  age_restriction text default '13+' check (age_restriction in ('all', '13+', '18+', '21+')),
+  tags text[] default '{}',
   poster_image_url text,
   trailer_video_url text,
-  access_mode text check (access_mode in ('ticket_required', 'invite_only', 'public_free')) default 'ticket_required',
+  access_mode text not null default 'ticket_required' check (access_mode in ('ticket_required', 'invite_only', 'public_free')),
   max_capacity integer default 5000,
   record_vod boolean default true,
-  enable_drm boolean default false,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  enable_drm boolean default true,
+  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone('utc'::text, now())
 );
 
--- Create tickets table for Venue 5
-create table public.tickets (
-  id uuid default uuid_generate_v4() primary key,
-  ticket_id text unique not null, -- human-readable ticket ID
-  event_id uuid references public.theatre_events(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  type text check (type in ('free', 'paid')) not null,
-  price decimal(10,2) default 0.00,
-  currency text default 'USD',
-  purchased_at_iso timestamp with time zone default timezone('utc'::text, now()) not null,
-  admit_from_iso timestamp with time zone,
-  admit_until_iso timestamp with time zone,
+-- Create theatre_orders table for payment processing
+create table public.theatre_orders (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.theatre_users(id) on delete cascade,
+  total_cents integer not null default 0,
+  currency text not null default 'USD',
+  provider text,
+  provider_payment_id text,
+  status text not null default 'paid' check (status in ('pending', 'paid', 'failed', 'refunded')),
+  created_at timestamp with time zone not null default timezone('utc'::text, now())
+);
+
+-- Create theatre_tickets table for Venue 5
+create table public.theatre_tickets (
+  id uuid primary key default uuid_generate_v4(),
+  event_id uuid not null references public.theatre_events(id) on delete cascade,
+  user_id uuid references public.theatre_users(id) on delete set null,
+  type text not null check (type in ('free', 'paid', 'vip', 'backstage')),
+  price_cents integer not null default 0,
+  currency text not null default 'USD',
+  purchased_at timestamp with time zone,
+  admit_from timestamp with time zone,
+  admit_until timestamp with time zone,
   seat_label text,
-  transferable boolean default false,
-  used_at_iso timestamp with time zone,
+  transferable boolean not null default false,
+  used_at timestamp with time zone,
   qr_code_data text,
-  stripe_payment_intent_id text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  order_id uuid references public.theatre_orders(id) on delete set null,
+  created_at timestamp with time zone not null default timezone('utc'::text, now())
 );
 
 -- Create theatre_chat_messages table for Venue 5 live chat
 create table public.theatre_chat_messages (
-  id uuid default uuid_generate_v4() primary key,
-  event_id uuid references public.theatre_events(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
+  id bigserial primary key,
+  event_id uuid not null references public.theatre_events(id) on delete cascade,
+  user_id uuid references public.theatre_users(id) on delete set null,
+  display_name text not null,
   message text not null,
-  message_type text check (message_type in ('message', 'announcement', 'system')) default 'message',
-  parent_message_id uuid references public.theatre_chat_messages(id) on delete cascade, -- for threaded replies
-  is_pinned boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Create theatre_chat_reactions table for message reactions
-create table public.theatre_chat_reactions (
-  id uuid default uuid_generate_v4() primary key,
-  message_id uuid references public.theatre_chat_messages(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  reaction_type text not null, -- emoji or reaction type
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(message_id, user_id, reaction_type)
+  replied_to bigint references public.theatre_chat_messages(id) on delete set null,
+  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  deleted_at timestamp with time zone
 );
 
 -- Create theatre_bans table for user moderation
 create table public.theatre_bans (
-  id uuid default uuid_generate_v4() primary key,
-  event_id uuid references public.theatre_events(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  banned_by uuid references public.profiles(id) not null,
+  id bigserial primary key,
+  event_id uuid references public.theatre_events(id) on delete cascade,
+  user_id uuid references public.theatre_users(id) on delete cascade,
   reason text,
-  ban_type text check (ban_type in ('mute', 'ban', 'timeout')) not null,
-  expires_at timestamp with time zone, -- null for permanent bans
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  banned_by uuid references public.theatre_users(id),
+  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  expires_at timestamp with time zone
 );
 
 -- Create theatre_moderation_actions table for tracking moderation
 create table public.theatre_moderation_actions (
-  id uuid default uuid_generate_v4() primary key,
-  event_id uuid references public.theatre_events(id) on delete cascade not null,
-  moderator_id uuid references public.profiles(id) not null,
-  target_user_id uuid references public.profiles(id),
-  target_message_id uuid references public.theatre_chat_messages(id),
-  action_type text check (action_type in ('delete_message', 'mute_user', 'ban_user', 'pin_message', 'unpin_message')) not null,
-  reason text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  id bigserial primary key,
+  event_id uuid references public.theatre_events(id) on delete cascade,
+  actor_id uuid references public.theatre_users(id),
+  target_user_id uuid references public.theatre_users(id),
+  action text not null check (action in ('delete_message', 'mute_user', 'ban_user', 'pin_message', 'unpin_message', 'slow_mode')),
+  message_id bigint references public.theatre_chat_messages(id) on delete set null,
+  meta jsonb default '{}'::jsonb,
+  created_at timestamp with time zone not null default timezone('utc'::text, now())
 );
 
--- Create guest_usernames table for anonymous users
-create table public.guest_usernames (
-  id uuid default uuid_generate_v4() primary key,
-  username text unique not null,
-  session_id text not null, -- to track anonymous sessions
-  event_id uuid references public.theatre_events(id) on delete cascade not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  expires_at timestamp with time zone not null
+-- Create theatre_participants table for tracking live viewers
+create table public.theatre_participants (
+  id bigserial primary key,
+  event_id uuid not null references public.theatre_events(id) on delete cascade,
+  user_id uuid references public.theatre_users(id) on delete set null,
+  display_name text not null,
+  joined_at timestamp with time zone not null default timezone('utc'::text, now()),
+  left_at timestamp with time zone
 );
 
 -- Create chat_messages table for live stream chat (keeping existing)
