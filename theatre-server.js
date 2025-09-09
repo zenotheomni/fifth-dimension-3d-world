@@ -1,11 +1,15 @@
-const express = require('express');
-const cors = require('cors');
-const WebSocket = require('ws');
-const http = require('http');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
 
 // CORS configuration for theatre system
 const corsOrigins = [
@@ -22,7 +26,7 @@ app.use(express.static('public'));
 app.use(express.json());
 
 // WebSocket server for real-time chat
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
 // Store chat messages in memory (in production, use a database)
 const chatMessages = new Map();
@@ -50,7 +54,7 @@ wss.on('connection', (ws, req) => {
         
         // Broadcast to all connected clients for this event
         wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN && client !== ws) {
+          if (client.readyState === 1 && client !== ws) { // WebSocket.OPEN = 1
             client.send(JSON.stringify({
               type: 'chat_message',
               payload: chatData
@@ -108,7 +112,7 @@ app.post('/api/events/:eventId/chat/post', (req, res) => {
   
   // Broadcast to WebSocket clients
   wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === 1) { // WebSocket.OPEN = 1
       client.send(JSON.stringify({
         type: 'chat_message',
         payload: message
@@ -184,6 +188,6 @@ app.post('/api/events/:eventId/notify', (req, res) => {
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`🎭 Fifth Dimension Theatre Server running on port ${PORT}`);
-  console.log(`🌐 Theatre available at: http://localhost:${PORT}/theatre/index.html`);
+  console.log(`�� Theatre available at: http://localhost:${PORT}/theatre/index.html`);
   console.log(`📡 WebSocket endpoint: ws://localhost:${PORT}/events/{eventId}/chat`);
 });
