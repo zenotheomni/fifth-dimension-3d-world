@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fifth Dimension • Theatre (Cosmos + Merch)</title>
-  <meta name="description" content="Fifth Dimension Theatre: live shows, chat, merch and ticketing with an immersive cosmic ambience."/>
+  <meta name="description" content="Fifth Dimension Theatre: live shows, chat, and merch with an immersive cosmic ambience."/>
   <style>
     html, body { margin:0; padding:0; height:100%; background:#000; color:#f5f5f5; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     .app { display:flex; flex-direction:column; height:100%; }
@@ -31,28 +31,9 @@
     .video-wrap { position:absolute; left:6%; top:10%; width:74%; aspect-ratio:16/9; border:1px solid #333; border-radius:12px; overflow:hidden; background:#000; }
     .video-wrap video { width:100%; height:100%; display:block; }
 
-    /* Ticketing system */
-    .ticketing-panel {
-      position:absolute; left:6%; top: calc(10% + 74% + 10px); width:74%;
-      background:linear-gradient(90deg, #0d0d0d, #141414);
-      border:1px solid #222; border-radius:12px;
-      padding:16px; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
-    }
-    .ticket-tiers { display:flex; gap:12px; margin-bottom:12px; }
-    .ticket-tier {
-      flex:1; background:#111; border:1px solid #333; border-radius:8px;
-      padding:12px; cursor:pointer; transition:all 0.2s ease;
-    }
-    .ticket-tier:hover { border-color:#4f46e5; background:#1a1a2e; }
-    .ticket-tier.selected { border-color:#4f46e5; background:#1e1b4b; }
-    .tier-name { font-weight:600; font-size:14px; margin-bottom:4px; }
-    .tier-price { color:#a7f3d0; font-size:16px; font-weight:600; }
-    .tier-availability { font-size:12px; color:#9ca3af; margin-top:4px; }
-    .tier-sale-window { font-size:11px; color:#6b7280; margin-top:2px; }
-
     /* Merch banner (3/4 layout) */
     .fd-merch-banner {
-      position:absolute; left:6%; top: calc(10% + 74% + 10px + 120px); width:74%;
+      position:absolute; left:6%; top: calc(10% + 74% + 10px); width:74%;
       min-height:84px; background:linear-gradient(90deg, #0d0d0d, #141414);
       border:1px solid #222; border-radius:12px; display:flex; align-items:center; gap:12px;
       padding:10px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
@@ -128,18 +109,6 @@
 
         <div class="video-wrap">
           <video id="video" playsinline controls></video>
-        </div>
-
-        <!-- Ticketing Panel -->
-        <div class="ticketing-panel" id="ticketingPanel">
-          <div style="margin-bottom:12px; font-weight:600; font-size:16px;">Get Your Tickets</div>
-          <div class="ticket-tiers" id="ticketTiers">
-            <!-- Ticket tiers will be populated by JavaScript -->
-          </div>
-          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
-            <button class="btn btn-ghost" id="notifyBtn">Get Reminders</button>
-            <button class="btn btn-primary" id="buyTicketsBtn" disabled>Buy Tickets</button>
-          </div>
         </div>
 
         <!-- Merch banner (3/4 layout) -->
@@ -238,47 +207,6 @@
       : 'ws://localhost:4000';
     const DUMMY_HLS = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
     // ========================================================================
-
-    // Ticketing configuration
-    const TICKETING_CONFIG = {
-      "tiers": [
-        {
-          "name": "Early Bird",
-          "code": "early_bird",
-          "price_cents": 1500,
-          "on_sale_start_iso": "2025-10-01T12:00:00Z",
-          "on_sale_end_iso": "2025-11-01T00:00:00Z",
-          "quantity_cap": 200,
-          "per_user_limit": 2,
-          "visible": true
-        },
-        {
-          "name": "General Admission",
-          "code": "ga",
-          "price_cents": 2500,
-          "on_sale_start_iso": "2025-11-01T00:00:00Z",
-          "on_sale_end_iso": "2025-12-12T23:59:59Z",
-          "quantity_cap": 1000,
-          "per_user_limit": 4,
-          "visible": true
-        },
-        {
-          "name": "Day Of (Gate)",
-          "code": "day_of",
-          "price_cents": 3500,
-          "on_sale_start_relative": {
-            "hours_before_event": 12
-          },
-          "on_sale_end_relative": {
-            "minutes_before_event": 0
-          },
-          "quantity_cap": 300,
-          "per_user_limit": 2,
-          "visible": true,
-          "enabled": true
-        }
-      ]
-    };
 
     // Layout toggle
     const body = document.body;
@@ -405,83 +333,6 @@
     };
     document.getElementById('reportBtn').onclick = () => alert('Open support modal / link to help.');
 
-    // ----- Ticketing System -----
-    let selectedTier = null;
-    
-    function formatPrice(cents) {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
-    }
-    
-    function isTierOnSale(tier) {
-      const now = new Date();
-      if (tier.on_sale_start_iso) {
-        const start = new Date(tier.on_sale_start_iso);
-        const end = new Date(tier.on_sale_end_iso);
-        return now >= start && now <= end;
-      }
-      if (tier.on_sale_start_relative) {
-        // For day-of sales, check if we're within the window
-        return true; // Simplified for demo
-      }
-      return false;
-    }
-    
-    function renderTicketTiers() {
-      const container = document.getElementById('ticketTiers');
-      container.innerHTML = '';
-      
-      TICKETING_CONFIG.tiers.forEach(tier => {
-        if (!tier.visible) return;
-        
-        const tierEl = document.createElement('div');
-        tierEl.className = 'ticket-tier';
-        tierEl.dataset.tierCode = tier.code;
-        
-        const isOnSale = isTierOnSale(tier);
-        const saleWindow = tier.on_sale_start_iso 
-          ? `${new Date(tier.on_sale_start_iso).toLocaleDateString()} - ${new Date(tier.on_sale_end_iso).toLocaleDateString()}`
-          : 'Day of event only';
-        
-        tierEl.innerHTML = `
-          <div class="tier-name">${tier.name}</div>
-          <div class="tier-price">${formatPrice(tier.price_cents)}</div>
-          <div class="tier-availability">${isOnSale ? 'Available' : 'Not yet on sale'}</div>
-          <div class="tier-sale-window">${saleWindow}</div>
-        `;
-        
-        if (isOnSale) {
-          tierEl.onclick = () => selectTier(tier);
-        } else {
-          tierEl.style.opacity = '0.5';
-          tierEl.style.cursor = 'not-allowed';
-        }
-        
-        container.appendChild(tierEl);
-      });
-    }
-    
-    function selectTier(tier) {
-      selectedTier = tier;
-      document.querySelectorAll('.ticket-tier').forEach(el => el.classList.remove('selected'));
-      document.querySelector(`[data-tier-code="${tier.code}"]`).classList.add('selected');
-      document.getElementById('buyTicketsBtn').disabled = false;
-    }
-    
-    document.getElementById('buyTicketsBtn').onclick = () => {
-      if (selectedTier) {
-        alert(`🎫 Redirecting to purchase ${selectedTier.name} tickets for ${formatPrice(selectedTier.price_cents)}`);
-      }
-    };
-    
-    document.getElementById('notifyBtn').onclick = () => {
-      const email = prompt('Enter your email for event reminders:');
-      if (email) {
-        alert(`📧 We'll send reminders to ${email} at 7 days, 24 hours, and 1 hour before the event!`);
-      }
-    };
-    
-    renderTicketTiers();
-
     // ----- REST: load event metadata + chat history -----
     async function loadEvent() {
       try {
@@ -554,7 +405,10 @@
     // -------- Merch / Events + Inline Checkout --------
     const sampleOffers = [
       { id: 'offer-tee-001', type: 'product', title: '5D Signature Tee', subtitle: 'Cosmic Blue Edition', thumb_url: 'https://picsum.photos/seed/5dtee/200/200', price_cents: 3200, currency: 'USD' },
-      { id: 'offer-event-zeno-002', type: 'event', title: 'ZENO RELOADED — Next Show', subtitle: 'Early Bird Live Stream', thumb_url: 'https://picsum.photos/seed/zeno/200/200', price_cents: 1500, currency: 'USD' }
+      { id: 'offer-event-zeno-002', type: 'event', title: 'ZENO RELOADED — Next Show', subtitle: 'Early Bird Live Stream', thumb_url: 'https://picsum.photos/seed/zeno/200/200', price_cents: 1500, currency: 'USD' },
+      { id: 'offer-hoodie-003', type: 'product', title: '5D Cosmic Hoodie', subtitle: 'Limited Edition', thumb_url: 'https://picsum.photos/seed/5dhoodie/200/200', price_cents: 4500, currency: 'USD' },
+      { id: 'offer-poster-004', type: 'product', title: 'ZENO RELOADED Poster', subtitle: 'Signed by Artist', thumb_url: 'https://picsum.photos/seed/5dposter/200/200', price_cents: 1800, currency: 'USD' },
+      { id: 'offer-vip-005', type: 'event', title: 'VIP Backstage Pass', subtitle: 'Meet & Greet + Merch', thumb_url: 'https://picsum.photos/seed/5dvip/200/200', price_cents: 7500, currency: 'USD' }
     ];
     let offerIndex = 0;
     function fmtPrice(cents, cur='USD'){ return new Intl.NumberFormat('en-US',{style:'currency',currency:cur}).format((cents||0)/100); }
@@ -581,6 +435,9 @@
     function nextOffer() { offerIndex = (offerIndex + 1) % sampleOffers.length; setOfferUI(sampleOffers[offerIndex]); }
     document.getElementById('nextOfferBtn').onclick = nextOffer;
     document.getElementById('nextOfferBtnFs').onclick = nextOffer;
+
+    // Auto-rotate offers every 15 seconds
+    setInterval(nextOffer, 15000);
 
     // Checkout UIs
     const checkoutDrawer = document.getElementById('checkoutDrawer');
