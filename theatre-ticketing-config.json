@@ -1,0 +1,96 @@
+{
+  "id": "ticketing-upgrade-ebb46012",
+  "version": "1.0.0",
+  "updated_at": "2025-09-08T18:03:35.604182Z",
+  "module": "TicketingAndAlertsUpgrade",
+  "description": "Adds Early Bird/Day-Of ticket tiers, on-sale windows, and Email/SMS reminder capabilities.",
+  "pricing": {
+    "currency_default": "USD",
+    "tiers": [
+      {
+        "name": "Early Bird",
+        "code": "early_bird",
+        "price_cents": 1500,
+        "on_sale_start_iso": "2025-10-01T12:00:00Z",
+        "on_sale_end_iso": "2025-11-01T00:00:00Z",
+        "quantity_cap": 200,
+        "per_user_limit": 2,
+        "visible": true
+      },
+      {
+        "name": "General Admission",
+        "code": "ga",
+        "price_cents": 2500,
+        "on_sale_start_iso": "2025-11-01T00:00:00Z",
+        "on_sale_end_iso": "2025-12-12T23:59:59Z",
+        "quantity_cap": 1000,
+        "per_user_limit": 4,
+        "visible": true
+      },
+      {
+        "name": "Day Of (Gate)",
+        "code": "day_of",
+        "price_cents": 3500,
+        "on_sale_start_relative": {
+          "hours_before_event": 12
+        },
+        "on_sale_end_relative": {
+          "minutes_before_event": 0
+        },
+        "quantity_cap": 300,
+        "per_user_limit": 2,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "rules": {
+      "allow_day_of_sales": true,
+      "refund_policy": "no_refunds_within_24h_of_event_start"
+    }
+  },
+  "notifications": {
+    "providers": {
+      "email": [
+        "SendGrid",
+        "AmazonSES",
+        "Resend"
+      ],
+      "sms": [
+        "Twilio",
+        "MessageBird"
+      ]
+    },
+    "opt_in": {
+      "email": true,
+      "sms": true
+    },
+    "reminder_schedules": [
+      {
+        "name": "T-7 days",
+        "offset": {
+          "days_before_event": 7
+        }
+      },
+      {
+        "name": "T-24 hours",
+        "offset": {
+          "hours_before_event": 24
+        }
+      },
+      {
+        "name": "T-1 hour",
+        "offset": {
+          "hours_before_event": 1
+        }
+      }
+    ],
+    "templates": {
+      "email": {
+        "subject": "Reminder: {event_title}",
+        "html": "<h2>{event_title}</h2><p>Starts: {start_at_local}</p>"
+      },
+      "sms": {
+        "text": "{event_title} starts {relative_time}. Join link: {join_url}"
+      }
+    }
+  }

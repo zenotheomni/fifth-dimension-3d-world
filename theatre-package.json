@@ -1,0 +1,29 @@
+{
+  "name": "fifth-dimension-theatre",
+  "version": "1.0.0",
+  "description": "Fifth Dimension Theatre: Live streaming with cosmic ambience, ticketing, and merch",
+  "main": "theatre-server.js",
+  "scripts": {
+    "start": "node theatre-server.js",
+    "dev": "nodemon theatre-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "theatre",
+    "live-streaming",
+    "ticketing",
+    "cosmic",
+    "threejs",
+    "websocket"
+  ],
+  "author": "Fifth Dimension",
+  "license": "MIT"
+}
